@@ -5,7 +5,7 @@ module.exports = {
   entry: "./web/src/dapp/index.js",
   output: {
     path: path.join(__dirname, "./web/src/dapp"),
-    filename: "bundle.js"
+    filename: "dapp-bundle.js"
   },
   module: {
     rules: [
@@ -32,6 +32,8 @@ module.exports = {
   },
   devServer: {
     contentBase: path.join(__dirname, "dapp"),
-    port: 8000, compress: true
+    port: 8000, 
+    hot: true,
+    compress: true
   },
 };

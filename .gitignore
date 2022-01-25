@@ -6,6 +6,8 @@ build
 
 # production
 /build
+/prod
+/web/src/server/dist
 
 # misc
 .DS_Store

@@ -1,39 +1,70 @@
-const path = require("path");
-const CopyWebpackPlugin = require("copy-webpack-plugin");
+// const webpack = require('webpack');
+// const path = require('path')
+// const nodeExternals = require('webpack-node-externals')
+// const NodemonPlugin = require('nodemon-webpack-plugin')
+
+// module.exports = {
+//   entry: [
+//     'webpack/hot/poll?1000',
+//     './web/src/server/index'
+//   ],
+//   watch: true,
+//   target: 'node',
+//   output: {
+//     path: path.join(__dirname, './web/src/server/dist/'),
+//     filename: 'server-bundle.js'
+//   },
+//   devServer: {
+//     hot: true,
+//     open: true,
+//     inline: true,
+//     watchContentBase: true,
+//     contentBase: __dirname + './web/src/server/dist/'
+//   },
+//   externals: [nodeExternals({
+//     allowlist: ['webpack/hot/poll?1000']
+//   })],
+//   plugins: [
+//     new NodemonPlugin(),
+//     new webpack.HotModuleReplacementPlugin(),
+//   ]
+// }
+
+const webpack = require('webpack')
+const path = require('path')
+const nodeExternals = require('webpack-node-externals')
+// const StartServerPlugin = require('start-server-webpack-plugin')
 
 module.exports = {
   entry: [
-    'webpack/hot/poll?1000', './web/src/dapp/index.js'
+    'webpack/hot/poll?1000',
+    './web/src/server/index'
   ],
-  output: {
-    path: path.join(__dirname, "./web/src/prod"),
-    filename: "server.js"
-  },
+  watch: true,
+  target: 'node',
+  externals: [nodeExternals({
+    allowlist: ['webpack/hot/poll?1000']
+  })],
   module: {
-    rules: [
-      {
-        test: /\.css$/,
-        use: ["style-loader", "css-loader"]
-      },
-      {
-        test: /\.(png|svg|jpg|gif)$/,
-        use: ['file-loader']
-      },
-      {
-        test: /\.html$/,
-        use: "html-loader",
-        exclude: /node_modules/
-      }
-    ]
+    rules: [{
+      test: /\.js?$/,
+      use: 'babel-loader',
+      exclude: /node_modules/
+    }]
   },
   plugins: [
-    new CopyWebpackPlugin([{ from: "./web/src/dapp/index.html", to: "index.html" }])
+    // new StartServerPlugin('server.js'),
+    new webpack.NamedModulesPlugin(),
+    new webpack.HotModuleReplacementPlugin(),
+    new webpack.NoEmitOnErrorsPlugin(),
+    new webpack.DefinePlugin({
+      "process.env": {
+        "BUILD_TARGET": JSON.stringify('server')
+      }
+    }),
   ],
-  resolve: {
-    extensions: [".js"]
-  },
-  devServer: {
-    contentBase: path.join(__dirname, "dapp"),
-    port: 8080, compress: true
-  },
-};
+  output: {
+    path: path.join(__dirname, 'prod/server'),
+    filename: 'server.js'
+  }
+}
