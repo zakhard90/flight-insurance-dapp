@@ -37,7 +37,7 @@ const StartServerPlugin = require('start-server-webpack-plugin')
 
 module.exports = {
   entry: [
-    './web/src/server/index'
+    './web/src/server/server.js'
   ],
   watch: true,
   target: 'node',
@@ -63,7 +63,7 @@ module.exports = {
     }),
   ],
   output: {
-    path: path.resolve(__dirname, 'dist/server'),
+    path: path.resolve(__dirname, 'build/server'),
     filename: 'server.js'
   },
   devServer: {
@@ -72,7 +72,7 @@ module.exports = {
     open: true,
     inline: true,
     watchContentBase: true,
-    // publicPath: "/app",
-    contentBase: path.resolve(__dirname, 'dist/server/server.js')
+    writeToDisk: true,
+    contentBase: path.resolve(__dirname, 'build/server/server.js')
   }
 }
