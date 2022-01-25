@@ -33,7 +33,7 @@
 const webpack = require('webpack')
 const path = require('path')
 const nodeExternals = require('webpack-node-externals')
-// const StartServerPlugin = require('start-server-webpack-plugin')
+const StartServerPlugin = require('start-server-webpack-plugin')
 
 module.exports = {
   entry: [
@@ -52,7 +52,7 @@ module.exports = {
   //   }]
   // },
   plugins: [
-    // new StartServerPlugin('server.js'),
+    new StartServerPlugin('server.js'),
     new webpack.NamedModulesPlugin(),
     new webpack.HotModuleReplacementPlugin(),
     new webpack.NoEmitOnErrorsPlugin(),
@@ -64,7 +64,7 @@ module.exports = {
   ],
   output: {
     path: path.resolve(__dirname, 'dist/server'),
-    filename: 'server-bundle.js'
+    filename: 'server.js'
   },
   devServer: {
     hot: true,
@@ -72,6 +72,7 @@ module.exports = {
     open: true,
     inline: true,
     watchContentBase: true,
-    contentBase: path.resolve(__dirname, 'dist/server')
+    // publicPath: "/app",
+    contentBase: path.resolve(__dirname, 'dist/server/server.js')
   }
 }
