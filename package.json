@@ -4,17 +4,17 @@
     "description": "",
     "private": true,
     "scripts": {
-        "build": "webpack",
-        "dev": "webpack-dev-server --hot --mode development --config webpack.config.dapp.js",
+        "dev": "webpack-dev-server --mode development --config webpack.config.dapp.js",
+        "dev-build": "webpack --mode development --config webpack.config.dapp.js",
         "prod": "webpack-dev-server --mode production --config webpack.config.dapp.js",
-        "srv": "webpack --mode development --config webpack.config.server.js",
+        "srv": "webpack-dev-server --mode development --config webpack.config.server.js",
+        "srv-build": "webpack --mode development --config webpack.config.server.js",
         "test": "truffle test",
         "test-1": "truffle test ./test/flightSurety.js",
         "test-2": "truffle test ./test/oracles.js"
     },
     "dependencies": {
         "@truffle/hdwallet-provider": "^2.0.1",
-        "babel-loader": "^8.2.3",
         "bignumber.js": "8.0.2",
         "chai": "4.2.0",
         "chai-as-promised": "7.1.1",
@@ -27,12 +27,10 @@
         "openzeppelin-solidity": "^2.3.0",
         "style-loader": "^0.23.1",
         "web3": "^1.2.4",
-        "webpack": "^4.41.2",
-        "webpack-cli": "^3.3.10",
-        "webpack-dev-server": "^3.9.0",
-        "webpack-node-externals": "^3.0.0"
-    },
-    "devDependencies": {
+        "webpack": "^4.44.2",
+        "webpack-cli": "^3.3.12",
+        "webpack-dev-server": "^3.11.0",
+        "webpack-node-externals": "^3.0.0",
         "nodemon-webpack-plugin": "^4.7.0"
     }
 }

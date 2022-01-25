@@ -37,7 +37,6 @@ const nodeExternals = require('webpack-node-externals')
 
 module.exports = {
   entry: [
-    'webpack/hot/poll?1000',
     './web/src/server/index'
   ],
   watch: true,
@@ -45,13 +44,13 @@ module.exports = {
   externals: [nodeExternals({
     allowlist: ['webpack/hot/poll?1000']
   })],
-  module: {
-    rules: [{
-      test: /\.js?$/,
-      use: 'babel-loader',
-      exclude: /node_modules/
-    }]
-  },
+  // module: {
+  //   rules: [{
+  //     test: /\.js?$/,
+  //     use: 'babel-loader',
+  //     exclude: /node_modules/
+  //   }]
+  // },
   plugins: [
     // new StartServerPlugin('server.js'),
     new webpack.NamedModulesPlugin(),
@@ -64,7 +63,15 @@ module.exports = {
     }),
   ],
   output: {
-    path: path.join(__dirname, 'prod/server'),
-    filename: 'server.js'
+    path: path.resolve(__dirname, 'dist/server'),
+    filename: 'server-bundle.js'
+  },
+  devServer: {
+    hot: true,
+    port: 8080,
+    open: true,
+    inline: true,
+    watchContentBase: true,
+    contentBase: path.resolve(__dirname, 'dist/server')
   }
 }
