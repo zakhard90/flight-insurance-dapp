@@ -2,10 +2,10 @@ const path = require("path");
 const CopyWebpackPlugin = require("copy-webpack-plugin");
 
 module.exports = {
-  entry: "./web/src/dapp/index.js",
+  entry: "./src/dapp/index.js",
   output: {
-    path: path.join(__dirname, "./web/src/dapp"),
-    filename: "dapp-bundle.js"
+    path: path.join(__dirname, "./src/dapp"),
+    filename: "bundle.js"
   },
   module: {
     rules: [
@@ -25,7 +25,7 @@ module.exports = {
     ]
   },
   plugins: [
-    new CopyWebpackPlugin([{ from: "./web/src/dapp/index.html", to: "index.html" }])
+    new CopyWebpackPlugin([{ from: "./src/dapp/index.html", to: "index.html" }])
   ],
   resolve: {
     extensions: [".js"]

@@ -64,7 +64,14 @@ module.exports = {
     }),
   ],
   output: {
-    path: path.join(__dirname, 'prod/server'),
+    path: path.resolve(__dirname, 'build/server'),
     filename: 'server.js'
+  },
+  devServer: {
+    hot: true,
+    open: true,
+    inline: true,
+    watchContentBase: true,
+    contentBase: path.resolve(__dirname, 'build/server'),
   }
 }
