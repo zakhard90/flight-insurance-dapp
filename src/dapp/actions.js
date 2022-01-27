@@ -21,7 +21,8 @@ const Actions = {
                 Actions._bindSingleEvent(el, cause, effect)
             }
         } else {
-            Actions._bindSingleEvent(els, cause, effect)
+            let el = els
+            Actions._bindSingleEvent(el, cause, effect)
         }
     },
     recallValues: (els, stored) => {
@@ -30,7 +31,8 @@ const Actions = {
                 Actions._filSingleValue(el, Actions._findStoredValue(el, stored))
             }
         } else {
-            Actions._filSingleValue(els, Actions._findStoredValue(el, stored))
+            let el = els
+            Actions._filSingleValue(el, Actions._findStoredValue(el, stored))
         }
     },
     display: (title, description, results) => {

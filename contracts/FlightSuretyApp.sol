@@ -13,6 +13,9 @@ contract FlightSuretyApp {
     uint8 private constant STATUS_CODE_LATE_OTHER = 50;
 
     address private contractOwner;
+    uint256 public quorum = 4;
+
+    mapping(bytes32 => Flight) private flights;
 
     FlightSuretyData fsdContract;
 
@@ -22,10 +25,14 @@ contract FlightSuretyApp {
         uint256 updatedTimestamp;
         address airline;
     }
-    mapping(bytes32 => Flight) private flights;
+
+    event QuorumChanged(uint256 oldQuorum, uint256 newQuorum);
 
     modifier requireIsOperational() {
-        require(fsdContract.isOperational(), "Contract is currently not operational");
+        require(
+            fsdContract.isOperational(),
+            "Contract is currently not operational"
+        );
         _;
     }
 
@@ -40,22 +47,48 @@ contract FlightSuretyApp {
         contractOwner = msg.sender;
     }
 
-    function isOperational() public returns (bool) {
+    function isOperational() public view returns (bool) {
         return fsdContract.isOperational();
     }
 
-    function isTestingMode() public returns (bool) {
+    function isTestingMode() public view returns (bool) {
         return fsdContract.isTestingMode();
     }
 
+    function isAuthorized() public view returns (bool) {
+        return fsdContract.isAuthorized();
+    }
 
+    function setQuorum(uint256 n) external requireContractOwner {
+        require(n > quorum);
+        uint256 prev = quorum;
+        quorum = n;
+        emit QuorumChanged(prev, n);
+    }
+
+    function getAirlineVotes(address airlineAddress) public view returns (uint256 count) {
+        return fsdContract.getAirlineVotes(airlineAddress);
+    }
+    
+    function getCountOperationalAirlines() public view returns (uint256 count) {
+        return fsdContract.getCountOperationalAirlines();
+    }
 
     function registerAirline(
         address airlineAddress,
         string calldata name,
         string calldata code
-    ) external requireContractOwner returns (bool success, uint256 votes) {
-        return fsdContract.registerAirline(airlineAddress, name, code);
+    ) external {
+        require(airlineAddress != address(0));
+        uint256 airlines = fsdContract.getCountOperationalAirlines();
+        bool isTrusted = airlines < quorum;
+        uint256 receivedVotes = fsdContract.getAirlineVotes(airlineAddress);
+        bool isMajority = receivedVotes >= quorum.div(2);
+        if (isTrusted || isMajority) {
+            fsdContract.registerAirline(airlineAddress, name, code);
+        } else {            
+            fsdContract.voteAirline(airlineAddress);
+        }
     }
 
     function registerFlight() external pure {}
@@ -256,12 +289,26 @@ contract FlightSuretyApp {
 }
 
 contract FlightSuretyData {
+    function isOperational() external view returns (bool);
+
+    function isTestingMode() external view returns (bool);
+
+    function isAuthorized() external view returns (bool);
+
+    function getCountOperationalAirlines() external view returns (uint256);
+
+    function getAirlineVotes(address airlineAddress)
+        external
+        view
+        returns (uint256);
+
     function registerAirline(
         address airlineAddress,
         string calldata name,
         string calldata code
-    ) external returns (bool success, uint256 votes);
+    ) external;
 
-    function isOperational() external returns (bool);
-    function isTestingMode() external returns (bool);
+    function voteAirline(
+        address airlineAddress
+    ) external;
 }

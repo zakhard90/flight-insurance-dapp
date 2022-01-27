@@ -1,4 +1,3 @@
-
 var FlightSuretyApp = artifacts.require("FlightSuretyApp");
 var FlightSuretyData = artifacts.require("FlightSuretyData");
 var BigNumber = require('bignumber.js');
@@ -22,7 +21,6 @@ var Config = async function (accounts) {
 
     let owner = accounts[0];
 
-
     let firstAirlineData = {
         address: accounts[1],
         name: "Genesis Airlines",
@@ -34,13 +32,22 @@ var Config = async function (accounts) {
         otherAirlines.push({
             address: accounts[i + 1],
             name: "European Airlines",
-            code: "EA0" + i + 1
+            code: "EA0" + (i + 1)
         });
     }
 
-    let flightSuretyData = await FlightSuretyData.new(firstAirlineData.address, firstAirlineData.name, firstAirlineData.code);
-    let flightSuretyApp = await FlightSuretyApp.new(FlightSuretyData.address);
-    await FlightSuretyApp.link(flightSuretyData);
+    let flightSuretyData = await FlightSuretyData.deployed();
+    await FlightSuretyApp.detectNetwork();
+    await FlightSuretyApp.link('FlightSuretyData', flightSuretyData.address);
+    let flightSuretyApp = await FlightSuretyApp.deployed();
+
+    console.log()
+    console.log("**************************")
+    console.log(flightSuretyData.address, "FlightSuretyData address");
+    console.log(flightSuretyApp.address, "FlightSuretyApp address");
+    console.log(firstAirlineData.address, "first airline address");
+    console.log("**************************")
+    console.log()
 
     return {
         owner: owner,

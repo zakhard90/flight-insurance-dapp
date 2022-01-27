@@ -9,6 +9,7 @@ module.exports = function (deployer, network, accounts) {
     let firstAirlineCode = "GA01";
     deployer.deploy(FlightSuretyData, firstAirlineAddress, firstAirlineName, firstAirlineCode)
         .then(() => {
+            deployer.link(FlightSuretyData, FlightSuretyApp);
             return deployer.deploy(FlightSuretyApp, FlightSuretyData.address)
                 .then(() => {
                     let config = {
