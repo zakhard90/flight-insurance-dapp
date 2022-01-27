@@ -6,7 +6,8 @@ contract FlightSuretyData {
     using SafeMath for uint256;
 
     address private contractOwner;
-    bool private operational = true;
+    bool private operational;
+    bool private testing;
 
     mapping(address => uint256) private authorizedCallers;
 
@@ -20,6 +21,8 @@ contract FlightSuretyData {
         string code;
     }
 
+    event CallerAuthorized(address caller);
+    event CallerDeauthorized(address caller);
     event AirlineRegistered(address airline, string name, string code);
     event AirlineBlocked(address airline, string name, string code);
 
@@ -31,12 +34,15 @@ contract FlightSuretyData {
         require(firstAirline != address(0));
         airlineRegistry.push(firstAirline);
         airlines[firstAirline] = Airline(firstAirline, true, name, code);
+        
+        operational = true;
+        testing = false;
         contractOwner = msg.sender;
     }
 
     modifier requireIsOperational() {
         require(operational, "Contract is currently not operational");
-        _; // All modifiers require an "_" which indicates where the function body will be added
+        _;
     }
 
     modifier requireContractOwner() {
@@ -45,12 +51,14 @@ contract FlightSuretyData {
     }
 
     modifier requireIsCallerAuthorized() {
-        require(authorizedCallers[msg.sender] == 1, "Caller is not authorized");
+        require(
+            authorizedCallers[msg.sender] == 1,
+            "Caller is not fucking authorized"
+        );
         _;
     }
 
- 
-    function isOperational() public view returns (bool) {
+    function isOperational() external view returns (bool) {
         return operational;
     }
 
@@ -58,11 +66,33 @@ contract FlightSuretyData {
         operational = mode;
     }
 
+    function isTestingMode() external view returns (bool) {
+        return testing;
+    }
+
+    function setTestingMode(bool mode)
+        external
+        requireContractOwner
+        requireIsOperational
+    {
+        require(testing != mode);
+        testing = mode;
+    }
+
+    function isAuthorizedCaller(address callerAddress)
+        public
+        view
+        returns (bool)
+    {
+        return authorizedCallers[callerAddress] == 1;
+    }
+
     function authorizeCaller(address contractAddress)
         external
         requireContractOwner
     {
         authorizedCallers[contractAddress] = 1;
+        emit CallerAuthorized(contractAddress);
     }
 
     function deauthorizeCaller(address contractAddress)
@@ -70,6 +100,7 @@ contract FlightSuretyData {
         requireContractOwner
     {
         delete authorizedCallers[contractAddress];
+        emit CallerDeauthorized(contractAddress);
     }
 
     function registerAirline(
@@ -78,8 +109,8 @@ contract FlightSuretyData {
         string calldata code
     )
         external
-        requireIsCallerAuthorized
         requireIsOperational
+        requireIsCallerAuthorized
         returns (bool success, uint256 votes)
     {
         require(airlineAddress != address(0));

@@ -40,6 +40,7 @@ var Config = async function (accounts) {
 
     let flightSuretyData = await FlightSuretyData.new(firstAirlineData.address, firstAirlineData.name, firstAirlineData.code);
     let flightSuretyApp = await FlightSuretyApp.new(FlightSuretyData.address);
+    await FlightSuretyApp.link(flightSuretyData);
 
     return {
         owner: owner,

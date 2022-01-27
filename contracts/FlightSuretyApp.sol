@@ -14,10 +14,7 @@ contract FlightSuretyApp {
 
     address private contractOwner;
 
-    bool private operational;
-    bool private testing;
-
-    FlightSuretyDataInterface fsdContract;
+    FlightSuretyData fsdContract;
 
     struct Flight {
         bool isRegistered;
@@ -28,7 +25,7 @@ contract FlightSuretyApp {
     mapping(bytes32 => Flight) private flights;
 
     modifier requireIsOperational() {
-        require(operational, "Contract is currently not operational");
+        require(fsdContract.isOperational(), "Contract is currently not operational");
         _;
     }
 
@@ -39,33 +36,19 @@ contract FlightSuretyApp {
 
     constructor(address dataContractAddress) public {
         require(dataContractAddress != address(0));
-        fsdContract = FlightSuretyDataInterface(dataContractAddress);
+        fsdContract = FlightSuretyData(dataContractAddress);
         contractOwner = msg.sender;
-        operational = true;
-        testing = false;
     }
 
-    function isOperational() public view returns (bool) {
-        return operational;
+    function isOperational() public returns (bool) {
+        return fsdContract.isOperational();
     }
 
-    function setOperational(bool mode) external requireContractOwner {
-        require(operational != mode);
-        operational = mode;
+    function isTestingMode() public returns (bool) {
+        return fsdContract.isTestingMode();
     }
 
-    function isTestingMode() public view returns (bool) {
-        return testing;
-    }
 
-    function setTestingMode(bool mode)
-        external
-        requireContractOwner
-        requireIsOperational
-    {
-        require(testing != mode);
-        testing = mode;
-    }
 
     function registerAirline(
         address airlineAddress,
@@ -272,10 +255,13 @@ contract FlightSuretyApp {
     // endregion
 }
 
-contract FlightSuretyDataInterface {
+contract FlightSuretyData {
     function registerAirline(
         address airlineAddress,
         string calldata name,
         string calldata code
     ) external returns (bool success, uint256 votes);
+
+    function isOperational() external returns (bool);
+    function isTestingMode() external returns (bool);
 }
