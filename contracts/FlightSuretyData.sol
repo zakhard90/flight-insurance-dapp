@@ -5,20 +5,50 @@ import "../node_modules/openzeppelin-solidity/contracts/math/SafeMath.sol";
 contract FlightSuretyData {
     using SafeMath for uint256;
 
-    address private contractOwner;
+    /* -------------------------------------------------------------------------- */
+    /*                               Main parameters                              */
+    /* -------------------------------------------------------------------------- */
+
     bool private operational;
     bool private testing;
-    uint256 private minimumFund;
-
+    address private contractOwner;
     mapping(address => uint256) private authorizedCallers;
+
+    /* -------------------------------------------------------------------------- */
+    /*                              Airline registry                              */
+    /* -------------------------------------------------------------------------- */
 
     uint256 countOperationalAirlines = 0;
     uint256 countBlockedAirlines = 0;
     address[] public airlineRegistry;
     mapping(address => Airline) private airlines;
+
+    /* -------------------------------------------------------------------------- */
+    /*                                Fund deposits                               */
+    /* -------------------------------------------------------------------------- */
+
+    uint256 private minimumFund;
     mapping(address => uint256) private airlineFundDeposits;
+
+    /* -------------------------------------------------------------------------- */
+    /*                                Voting system                               */
+    /* -------------------------------------------------------------------------- */
+
     mapping(address => uint256) private airlineVotes;
     mapping(address => mapping(address => bool)) private airlineVoters;
+
+    /* -------------------------------------------------------------------------- */
+    /*                                  Insurance                                 */
+    /* -------------------------------------------------------------------------- */
+
+    mapping(address => mapping(bytes32 => address[])) private insuredAccounts;
+    mapping(address => mapping(bytes32 => mapping(address => uint256)))
+        private insuranceBalances;
+    mapping(address => uint256) private insurancePayouts;
+
+    /* -------------------------------------------------------------------------- */
+    /*                                   Structs                                  */
+    /* -------------------------------------------------------------------------- */
 
     struct Airline {
         address id;
@@ -27,13 +57,39 @@ contract FlightSuretyData {
         string code;
     }
 
+    /* -------------------------------------------------------------------------- */
+    /*                                   Events                                   */
+    /* -------------------------------------------------------------------------- */
+
     event CallerAuthorized(address caller);
     event CallerDeauthorized(address caller);
+
     event AirlineVoted(address airline, uint256 votes);
     event AirlineRegistered(address airline, string name, string code);
     event AirlineBlocked(address airline, string name, string code);
+
     event FundsDeposited(address airline, uint256 amount);
     event FundsWithdrawn(address airline, uint256 amount);
+
+    event InsurancePurchased(
+        address airline,
+        bytes32 flight,
+        address account,
+        uint256 amount
+    );
+
+    event InsurancePayoutCredited(
+        address airline,
+        bytes32 flight,
+        address account,
+        uint256 amount
+    );
+
+    event InsurancePayoutWithdrawn(address account, uint256 amount);
+
+    /* -------------------------------------------------------------------------- */
+    /*                                 Constructor                                */
+    /* -------------------------------------------------------------------------- */
 
     constructor(
         address firstAirline,
@@ -50,8 +106,15 @@ contract FlightSuretyData {
         contractOwner = msg.sender;
     }
 
+    /* -------------------------------------------------------------------------- */
+    /*                                  Modifiers                                 */
+    /* -------------------------------------------------------------------------- */
+
     modifier requireIsOperational() {
-        require(operational, "Contract is currently not operational");
+        require(
+            operational,
+            "Contract is currently not set to operational state"
+        );
         _;
     }
 
@@ -64,10 +127,44 @@ contract FlightSuretyData {
     }
 
     modifier requireIsCallerAuthorized() {
-        require(authorizedCallers[msg.sender] == 1, "Caller is not authorized");
+        require(
+            authorizedCallers[msg.sender] == 1,
+            "Caller is not authorized to perform this call"
+        );
         _;
     }
 
+    modifier requireDirectSender() {
+        require(
+            msg.sender == tx.origin,
+            "Message sender is not the initiator of the transaction"
+        );
+        _;
+    }
+
+    modifier requireProxySender() {
+        require(
+            msg.sender != tx.origin,
+            "Message sender is the initiator of the transaction"
+        );
+        _;
+    }
+
+    modifier requireValidAddress(address checkAddress) {
+        require(
+            checkAddress != address(0),
+            "Input address cannot be undefined"
+        );
+        _;
+    }
+
+    modifier requireOperationalAirline(address airlineAddress) {
+        require(
+            isOperationalAirline(tx.origin),
+            "Caller is not an operational airline"
+        );
+        _;
+    }
     modifier requireIsFirstVote(address airlineAddress) {
         require(
             airlineVoters[airlineAddress][tx.origin] == false,
@@ -84,6 +181,10 @@ contract FlightSuretyData {
         _;
     }
 
+    /* -------------------------------------------------------------------------- */
+    /*                              Operational state                             */
+    /* -------------------------------------------------------------------------- */
+
     function isOperational() external view returns (bool) {
         return operational;
     }
@@ -91,6 +192,10 @@ contract FlightSuretyData {
     function setOperational(bool mode) external requireContractOwner {
         operational = mode;
     }
+
+    /* -------------------------------------------------------------------------- */
+    /*                                Testing mode                                */
+    /* -------------------------------------------------------------------------- */
 
     function isTestingMode() external view returns (bool) {
         return testing;
@@ -105,11 +210,20 @@ contract FlightSuretyData {
         testing = mode;
     }
 
-    function setMinimumFund(uint256 amount) public requireContractOwner {
+    /* -------------------------------------------------------------------------- */
+    /*                               Funding values                               */
+    /* -------------------------------------------------------------------------- */
+
+    function setMinimumFunds(uint256 amount) public requireContractOwner {
+        require(amount > 0);
         minimumFund = amount;
     }
 
-    function isAuthorized() external view returns (bool) {
+    /* -------------------------------------------------------------------------- */
+    /*                                Authorization                               */
+    /* -------------------------------------------------------------------------- */
+
+    function isAuthorized() external view requireProxySender returns (bool) {
         return authorizedCallers[msg.sender] == 1;
     }
 
@@ -124,6 +238,7 @@ contract FlightSuretyData {
     function authorizeCaller(address contractAddress)
         external
         requireContractOwner
+        requireValidAddress(contractAddress)
     {
         authorizedCallers[contractAddress] = 1;
         emit CallerAuthorized(contractAddress);
@@ -137,6 +252,10 @@ contract FlightSuretyData {
         emit CallerDeauthorized(contractAddress);
     }
 
+    /* -------------------------------------------------------------------------- */
+    /*                             Airline management                             */
+    /* -------------------------------------------------------------------------- */
+
     function registerAirline(
         address airlineAddress,
         string calldata name,
@@ -145,9 +264,9 @@ contract FlightSuretyData {
         external
         requireIsOperational
         requireIsCallerAuthorized
+        requireOperationalAirline(tx.origin)
         requireMinimumFundsCovered(tx.origin)
     {
-        require(isOperationalAirline(tx.origin));
         require(bytes(airlines[airlineAddress].name).length == 0);
 
         airlineRegistry.push(airlineAddress);
@@ -161,24 +280,32 @@ contract FlightSuretyData {
         requireIsOperational
         requireIsCallerAuthorized
         requireIsFirstVote(airlineAddress)
+        requireOperationalAirline(tx.origin)
         requireMinimumFundsCovered(tx.origin)
     {
-        require(airlineAddress != address(0));
-        require(isOperationalAirline(tx.origin));
         airlineVoters[airlineAddress][tx.origin] = true;
         airlineVotes[airlineAddress] = airlineVotes[airlineAddress].add(1);
         emit AirlineVoted(airlineAddress, airlineVotes[airlineAddress]);
+    }
+
+    function getAirlineVotes(address airlineAddress)
+        external
+        view
+        returns (uint256)
+    {
+        return airlineVotes[airlineAddress];
     }
 
     function blockAirline(address airlineAddress)
         external
         requireIsOperational
         requireIsCallerAuthorized
+        requireValidAddress(airlineAddress)
         requireMinimumFundsCovered(tx.origin)
     {
-        require(airlineAddress != address(0));
         require(bytes(airlines[airlineAddress].name).length > 0);
         require(countOperationalAirlines > 0);
+
         airlines[airlineAddress].isOperational = false;
         countOperationalAirlines = countOperationalAirlines.sub(1);
         countBlockedAirlines = countBlockedAirlines.add(1);
@@ -196,7 +323,7 @@ contract FlightSuretyData {
     {
         return (airlines[airlineAddress].isOperational);
     }
-    
+
     function getAirlineInfo(address airlineAddress)
         public
         view
@@ -208,14 +335,6 @@ contract FlightSuretyData {
 
     function getCountOperationalAirlines() external view returns (uint256) {
         return countOperationalAirlines;
-    }
-
-    function getAirlineVotes(address airlineAddress)
-        external
-        view
-        returns (uint256)
-    {
-        return airlineVotes[airlineAddress];
     }
 
     function getAirlineCount() public view returns (uint256) {
@@ -230,31 +349,77 @@ contract FlightSuretyData {
         return airlineFundDeposits[airlineAddress];
     }
 
-    function buy() external payable {}
-
-    function creditInsurees() external pure {}
-
-    function pay() external pure {}
-
-    function fund() public payable {
-        require(msg.sender == tx.origin, "Sender is not the payer");
+    function fundDeposit()
+        public
+        payable
+        requireIsOperational
+        requireDirectSender
+    {
         require(
             msg.value >= minimumFund,
             "Funds are not enough for the deposit"
         );
+
         airlineFundDeposits[msg.sender] = msg.value;
         emit FundsDeposited(msg.sender, msg.value);
     }
 
-    function getFlightKey(
-        address airline,
-        string memory flight,
-        uint256 timestamp
-    ) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(airline, flight, timestamp));
+    /* -------------------------------------------------------------------------- */
+    /*                            Insurance management                            */
+    /* -------------------------------------------------------------------------- */
+
+    function purchaseInsurance(address airline, bytes32 flight)
+        external
+        payable
+        requireIsOperational
+        requireProxySender
+        requireIsCallerAuthorized
+    {
+        insuredAccounts[airline][flight].push(tx.origin);
+        uint256 newBalance = insuranceBalances[airline][flight][tx.origin].add(
+            msg.value
+        );
+        insuranceBalances[airline][flight][tx.origin] = newBalance;
+        emit InsurancePurchased(airline, flight, tx.origin, msg.value);
+    }
+
+    function creditInsuree(bytes32 flight, address account) internal {
+        require(insuranceBalances[tx.origin][flight][account] > 0);
+        uint256 premium = insuranceBalances[tx.origin][flight][account];
+        uint256 credit = premium.div(2).mul(3);
+        insuranceBalances[tx.origin][flight][account] = 0;
+        insurancePayouts[account] = credit;
+        emit InsurancePayoutCredited(tx.origin, flight, account, credit);
+    }
+
+    function creditInsurees(bytes32 flight)
+        external
+        requireIsOperational
+        requireProxySender
+        requireIsCallerAuthorized
+    {
+        require(insuredAccounts[tx.origin][flight].length > 0);
+        address[] storage accounts = insuredAccounts[tx.origin][flight];
+        for (uint256 a = 0; a < accounts.length; a++) {
+            address account = accounts[a];
+            creditInsuree(flight, account);
+        }
+    }
+
+    function payoutInsurance()
+        external
+        requireIsOperational
+        requireProxySender
+        requireIsCallerAuthorized
+    {
+        require(insurancePayouts[tx.origin] > 0);
+        uint256 payout = insurancePayouts[tx.origin];
+        insurancePayouts[tx.origin] = 0;
+        tx.origin.transfer(payout);
+        emit InsurancePayoutWithdrawn(tx.origin, payout);
     }
 
     function() external payable {
-        fund();
+        fundDeposit();
     }
 }

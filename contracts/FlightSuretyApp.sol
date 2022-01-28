@@ -5,6 +5,10 @@ import "../node_modules/openzeppelin-solidity/contracts/math/SafeMath.sol";
 contract FlightSuretyApp {
     using SafeMath for uint256;
 
+    /* -------------------------------------------------------------------------- */
+    /*                                  Constants                                 */
+    /* -------------------------------------------------------------------------- */
+
     uint8 private constant STATUS_CODE_UNKNOWN = 0;
     uint8 private constant STATUS_CODE_ON_TIME = 10;
     uint8 private constant STATUS_CODE_LATE_AIRLINE = 20;
@@ -12,12 +16,34 @@ contract FlightSuretyApp {
     uint8 private constant STATUS_CODE_LATE_TECHNICAL = 40;
     uint8 private constant STATUS_CODE_LATE_OTHER = 50;
 
+    /* -------------------------------------------------------------------------- */
+    /*                               Main parameters                              */
+    /* -------------------------------------------------------------------------- */
+
     address private contractOwner;
     uint256 public quorum = 4;
 
+    /* -------------------------------------------------------------------------- */
+    /*                               Flight registry                              */
+    /* -------------------------------------------------------------------------- */
+
     mapping(bytes32 => Flight) private flights;
 
+    /* -------------------------------------------------------------------------- */
+    /*                                  Insurance                                 */
+    /* -------------------------------------------------------------------------- */
+
+    uint256 maxInsurance = 1 ether;
+
+    /* -------------------------------------------------------------------------- */
+    /*                              Storage contract                              */
+    /* -------------------------------------------------------------------------- */
+
     FlightSuretyData fsdContract;
+
+    /* -------------------------------------------------------------------------- */
+    /*                                   Structs                                  */
+    /* -------------------------------------------------------------------------- */
 
     struct Flight {
         bool isRegistered;
@@ -26,7 +52,33 @@ contract FlightSuretyApp {
         address airline;
     }
 
+    /* -------------------------------------------------------------------------- */
+    /*                                   Events                                   */
+    /* -------------------------------------------------------------------------- */
+
     event QuorumChanged(uint256 oldQuorum, uint256 newQuorum);
+
+    /* -------------------------------------------------------------------------- */
+    /*                                 Constructor                                */
+    /* -------------------------------------------------------------------------- */
+
+    constructor(address dataContractAddress) public {
+        require(dataContractAddress != address(0));
+        fsdContract = FlightSuretyData(dataContractAddress);
+        contractOwner = msg.sender;
+    }
+
+    /* -------------------------------------------------------------------------- */
+    /*                                  Modifiers                                 */
+    /* -------------------------------------------------------------------------- */
+
+    modifier requireContractOwner() {
+        require(
+            msg.sender == contractOwner,
+            "Caller is not the contract owner"
+        );
+        _;
+    }
 
     modifier requireIsOperational() {
         require(
@@ -36,16 +88,17 @@ contract FlightSuretyApp {
         _;
     }
 
-    modifier requireContractOwner() {
-        require(msg.sender == contractOwner, "Caller is not contract owner");
+    modifier requireAmountBelowMaximum() {
+        require(
+            msg.value <= maxInsurance,
+            "Sent amount exceedes the maximum insurance price possible"
+        );
         _;
     }
 
-    constructor(address dataContractAddress) public {
-        require(dataContractAddress != address(0));
-        fsdContract = FlightSuretyData(dataContractAddress);
-        contractOwner = msg.sender;
-    }
+    /* -------------------------------------------------------------------------- */
+    /*                             Status verification                            */
+    /* -------------------------------------------------------------------------- */
 
     function isOperational() public view returns (bool) {
         return fsdContract.isOperational();
@@ -59,6 +112,10 @@ contract FlightSuretyApp {
         return fsdContract.isAuthorized();
     }
 
+    /* -------------------------------------------------------------------------- */
+    /*                              Multiparty quorum                             */
+    /* -------------------------------------------------------------------------- */
+
     function setQuorum(uint256 n) external requireContractOwner {
         require(n > quorum);
         uint256 prev = quorum;
@@ -66,19 +123,27 @@ contract FlightSuretyApp {
         emit QuorumChanged(prev, n);
     }
 
-    function getAirlineVotes(address airlineAddress) public view returns (uint256 count) {
+    function getAirlineVotes(address airlineAddress)
+        public
+        view
+        returns (uint256 count)
+    {
         return fsdContract.getAirlineVotes(airlineAddress);
     }
-    
+
     function getCountOperationalAirlines() public view returns (uint256 count) {
         return fsdContract.getCountOperationalAirlines();
     }
+
+    /* -------------------------------------------------------------------------- */
+    /*                             Airline management                             */
+    /* -------------------------------------------------------------------------- */
 
     function registerAirline(
         address airlineAddress,
         string calldata name,
         string calldata code
-    ) external {
+    ) external requireIsOperational {
         require(airlineAddress != address(0));
         uint256 airlines = fsdContract.getCountOperationalAirlines();
         bool isTrusted = airlines < quorum;
@@ -86,10 +151,14 @@ contract FlightSuretyApp {
         bool isMajority = receivedVotes >= quorum.div(2);
         if (isTrusted || isMajority) {
             fsdContract.registerAirline(airlineAddress, name, code);
-        } else {            
+        } else {
             fsdContract.voteAirline(airlineAddress);
         }
     }
+
+    /* -------------------------------------------------------------------------- */
+    /*                              Flight management                             */
+    /* -------------------------------------------------------------------------- */
 
     function registerFlight() external pure {}
 
@@ -120,13 +189,15 @@ contract FlightSuretyApp {
         emit OracleRequest(index, airline, flight, timestamp);
     }
 
-    // region ORACLE MANAGEMENT
+    /* -------------------------------------------------------------------------- */
+    /*                              Oracle management                             */
+    /* -------------------------------------------------------------------------- */
 
     // Incremented to add pseudo-randomness at various points
     uint8 private nonce = 0;
 
     // Fee to be paid when registering oracle
-    uint256 public constant REGISTRATION_FEE = 0.1 ether;
+    uint256 public constant REGISTRATION_FEE = 1 ether;
 
     // Number of oracles that must respond for valid status
     uint256 private constant MIN_RESPONSES = 3;
@@ -285,8 +356,11 @@ contract FlightSuretyApp {
 
         return random;
     }
-    // endregion
 }
+
+/* -------------------------------------------------------------------------- */
+/*                         Storage contract interface                         */
+/* -------------------------------------------------------------------------- */
 
 contract FlightSuretyData {
     function isOperational() external view returns (bool);
@@ -308,7 +382,5 @@ contract FlightSuretyData {
         string calldata code
     ) external;
 
-    function voteAirline(
-        address airlineAddress
-    ) external;
+    function voteAirline(address airlineAddress) external;
 }

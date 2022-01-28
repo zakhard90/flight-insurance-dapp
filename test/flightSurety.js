@@ -14,9 +14,7 @@ function printEvents(events) {
                 delete contents[key];
         }
 
-        console.log(`${name} event #${i + 1}:
-        ${JSON.stringify(contents, null, 4)}
-        `)
+        console.log(`${name} event #${i + 1}\n${JSON.stringify(contents, null, 4)}`)
     }
 }
 
@@ -80,7 +78,7 @@ contract('Flight Surety Tests', async (accounts) => {
         for (let i = min; i < max; i++) {
             let newAirline = config.otherAirlines[i]
             let fromAddress = i == 0 ? firstAirline.address : config.otherAirlines[i - 1].address
-            await config.flightSuretyData.fund({ from: fromAddress, value: amount })
+            await config.flightSuretyData.fundDeposit({ from: fromAddress, value: amount })
             await config.flightSuretyApp.registerAirline(newAirline.address, newAirline.name, newAirline.code, { from: fromAddress })
             let airline = await config.flightSuretyData.getAirlineInfo.call(newAirline.address)
             assert.equal(airline.name, newAirline.name, `Incorrect new airline ${i} name`)
