@@ -34,34 +34,38 @@ contract('Flight Surety Tests', async (accounts) => {
     /*                                Event report                                */
     /* -------------------------------------------------------------------------- */
     after('view events', async () => {
-        let events = await config.flightSuretyData.getPastEvents('allEvents', { fromBlock: 0, toBlock: 'latest' })
-        console.log(config.flightSuretyApp.address, "FlightSuretyApp address")
-        printEvents(events)
+        let dataEvents = await config.flightSuretyData.getPastEvents('allEvents', { fromBlock: 0, toBlock: 'latest' })
+        let appEvents = await config.flightSuretyApp.getPastEvents('allEvents', { fromBlock: 0, toBlock: 'latest' })
+        printEvents(dataEvents)
+        printEvents(appEvents)
     })
     /* -------------------------------------------------------------------------- */
     /*                              Integration tests                             */
     /* -------------------------------------------------------------------------- */
+
+    /* ------------------ Verify if the contract is operational ----------------- */
     it(`(basic) has correct initial isOperational() value`, async function () {
-        let status = await config.flightSuretyData.isOperational.call()
+        let status = await config.flightSuretyApp.isOperational.call()
         assert.equal(status, true, "Incorrect initial operating status value")
     })
+
     /* --------- Verify if the calling contract is authorized correctly --------- */
     it(`(basic) has correctly authorized contract`, async function () {
-        let isAuthorized = await config.flightSuretyData.isAuthorizedCaller.call(config.flightSuretyApp.address)
-        assert.equal(isAuthorized, true, "Caller is not authorized")
         let isAuthorizedApp = await config.flightSuretyApp.isAuthorized.call({ from: config.owner })
         assert.equal(isAuthorizedApp, true, "Caller is not authorized")
     })
+
     /* ------------ The default airline shoud have the expected data ------------ */
     it(`(basic) has correct first airline data`, async function () {
         let { firstAirline } = config
-        let airline = await config.flightSuretyData.getAirlineInfo.call(firstAirline.address)
+        let airline = await config.flightSuretyApp.getAirlineInfo.call(firstAirline.address)
         assert.equal(airline.name, firstAirline.name, "Incorrect initial airline name")
         assert.equal(airline.code, firstAirline.code, "Incorrect initial airline code")
     })
     /* -------------------------------------------------------------------------- */
     /*                                 Multiparty                                 */
     /* -------------------------------------------------------------------------- */
+
     /* --- Verify if the registration is possible before the quorum is reached -- */
     it(`(multiparty) can register a new airline directly, below quorum value of ${quorum}`, async function () {
         let { firstAirline } = config
@@ -79,30 +83,32 @@ contract('Flight Surety Tests', async (accounts) => {
             let newAirline = config.otherAirlines[i]
             let fromAddress = i == 0 ? firstAirline.address : config.otherAirlines[i - 1].address
             await config.flightSuretyData.fundDeposit({ from: fromAddress, value: amount })
-            await config.flightSuretyApp.registerAirline(newAirline.address, newAirline.name, newAirline.code, { from: fromAddress })
-            let airline = await config.flightSuretyData.getAirlineInfo.call(newAirline.address)
+            await config.flightSuretyApp.submitAirlineRegistration(newAirline.address, newAirline.name, newAirline.code, { from: fromAddress })
+            let airline = await config.flightSuretyApp.getAirlineInfo.call(newAirline.address)
             assert.equal(airline.name, newAirline.name, `Incorrect new airline ${i} name`)
             assert.equal(airline.code, newAirline.code, `Incorrect new airline ${i} code`)
             lastUsedAirline = i;
         }
     })
+
     /* ----- Verify if the voting rules are enforced after quorum is reached ---- */
     it(`(multiparty) can't register a new airline directly, above quorum value of ${quorum}`, async function () {
         let { firstAirline } = config
         let newAirline = config.otherAirlines[++lastUsedAirline]
-        await config.flightSuretyApp.registerAirline(newAirline.address, newAirline.name, newAirline.code, { from: firstAirline.address })
-        let airline = await config.flightSuretyData.getAirlineInfo.call(newAirline.address)
+        await config.flightSuretyApp.submitAirlineRegistration(newAirline.address, newAirline.name, newAirline.code, { from: firstAirline.address })
+        let airline = await config.flightSuretyApp.getAirlineInfo.call(newAirline.address)
         assert.equal(airline.name, "", "Airline registered above quorum")
         let votes = await config.flightSuretyApp.getAirlineVotes.call(newAirline.address)
         assert.equal(BigNumber(votes).toNumber(), 1, "Airline votes not recorded")
     })
+
     /* -------- Verify that the votes are counted correctly in each round ------- */
     it(`(multiparty) can't vote twice for the same candidate`, async function () {
         let { firstAirline } = config
         let hasVoted
         let newAirline = config.otherAirlines[lastUsedAirline]
         try {
-            await config.flightSuretyApp.registerAirline(newAirline.address, newAirline.name, newAirline.code, { from: firstAirline.address })
+            await config.flightSuretyApp.submitAirlineRegistration(newAirline.address, newAirline.name, newAirline.code, { from: firstAirline.address })
             hasVoted = true;
         } catch (e) {
             hasVoted = false;
@@ -111,6 +117,7 @@ contract('Flight Surety Tests', async (accounts) => {
         let votes = await config.flightSuretyApp.getAirlineVotes.call(newAirline.address)
         assert.equal(BigNumber(votes).toNumber(), 1, "Airline votes not recorded")
     })
+
     /* ------ Verify that the voting process succedes with a 50% consensus ------ */
     it(`(multiparty) can register a new airline through voting, above quorum value of ${quorum}`, async function () {
 
@@ -126,8 +133,8 @@ contract('Flight Surety Tests', async (accounts) => {
 
         for (let i = min; i <= max; i++) {
             let fromAddress = config.otherAirlines[i].address
-            await config.flightSuretyApp.registerAirline(newAirline.address, newAirline.name, newAirline.code, { from: fromAddress })
-            let airline = await config.flightSuretyData.getAirlineInfo.call(newAirline.address)
+            await config.flightSuretyApp.submitAirlineRegistration(newAirline.address, newAirline.name, newAirline.code, { from: fromAddress })
+            let airline = await config.flightSuretyApp.getAirlineInfo.call(newAirline.address)
             if (i == max) { // the last required voter registers the new airline
                 assert.equal(airline.name, newAirline.name, `Incorrect new airline ${i} name`)
                 assert.equal(airline.code, newAirline.code, `Incorrect new airline ${i} code`)
@@ -141,6 +148,7 @@ contract('Flight Surety Tests', async (accounts) => {
         totalAirlines = await config.flightSuretyApp.getCountOperationalAirlines.call();
         assert.equal(totalAirlines, prevTotalAirlines + 1, "The total number of registered airlines doesn't match the expected value")
     })
+
     /* ---------------- Verify the limitations for external users --------------- */
     it(`(admin) can block access to setOperational() for non-Contract Owner account`, async function () {
 
@@ -153,6 +161,7 @@ contract('Flight Surety Tests', async (accounts) => {
         }
         assert.equal(accessDenied, true, "Access not restricted to Contract Owner")
     })
+
     /* --------------------- Verify the access to the owner --------------------- */
     it(`(admin) can allow access to setOperational() for Contract Owner account`, async function () {
 
@@ -165,6 +174,7 @@ contract('Flight Surety Tests', async (accounts) => {
         }
         assert.equal(accessDenied, false, "Access restricted to Contract Owner")
     })
+
     /* --- Verify that the operational status is set correctly and is required -- */
     it(`(admin) can block access to functions using requireIsOperational when operating status is false`, async function () {
 
@@ -185,8 +195,9 @@ contract('Flight Surety Tests', async (accounts) => {
         await config.flightSuretyData.setOperational(true, { from: config.owner })
         operational = await config.flightSuretyApp.isOperational.call({ from: config.owner })
     })
+
     /* - Verify that the minimum funds have been deposited for the registration - */
-    it('(airline) cannot register an Airline using registerAirline() if it is not funded', async () => {
+    it('(airline) cannot register an Airline using submitAirlineRegistration() if it is not funded', async () => {
 
         // the last airline shouldn't have funds
         let lastAirline = config.otherAirlines[lastUsedAirline]
@@ -195,7 +206,7 @@ contract('Flight Surety Tests', async (accounts) => {
 
         let rejected
         try {
-            await config.flightSuretyApp.registerAirline(newAirline.address, newAirline.name, newAirline.code, { from: lastAirline.address })
+            await config.flightSuretyApp.submitAirlineRegistration(newAirline.address, newAirline.name, newAirline.code, { from: lastAirline.address })
             rejected = false
         }
         catch (e) {
@@ -208,5 +219,21 @@ contract('Flight Surety Tests', async (accounts) => {
 
     })
 
+    /* -------------------------------------------------------------------------- */
+    /*                                  Insurance                                 */
+    /* -------------------------------------------------------------------------- */
+
+    /* ------------------ Verify correct purchase functionality ----------------- */
+/*
+    it('(insurance) can purchase an insurance for a defined flight', async () => {
+        let airline = config.otherAirlines[1]
+        let flight = web3.utils.asciiToHex("ef123246547cd")
+        let amount = Web3.utils.toWei("0.5", "ether")
+        let customer = config.customers[0]
+        await config.flightSuretyApp.purchaseInsurance(airline.address, flight, { from: customer.address, value: amount })
+    });*/
+    /* ------------ Verify credit functionality for a delayed flight ------------ */
+
+    /* ------------------------ Verify payout withdrawal ------------------------ */
 
 })

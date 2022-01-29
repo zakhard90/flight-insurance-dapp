@@ -28,11 +28,22 @@ var Config = async function (accounts) {
     };
 
     let otherAirlines = [];
-    for (let i = 1; i <= 9; i++) {
+    for (let i = 1; i <= 5; i++) {
         otherAirlines.push({
             address: accounts[i + 1],
             name: "European Airlines",
             code: "EA0" + (i + 1)
+        });
+    }
+
+    let customers = [];
+    let names = ["Oscar Wylde", "Mark Twain", "Mary Shelley"]
+    n = 0;
+    for (let i = 6; i <= 8; i++) {
+        customers.push({
+            address: accounts[i + 1],
+            name: names[n],
+            code: "CU0" + ++n
         });
     }
 
@@ -53,6 +64,7 @@ var Config = async function (accounts) {
         owner: owner,
         firstAirline: firstAirlineData,
         otherAirlines: otherAirlines,
+        customers: customers,
         weiMultiple: (new BigNumber(10)).pow(18),
         testAddresses: testAddresses,
         flightSuretyData: flightSuretyData,

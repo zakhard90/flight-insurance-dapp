@@ -27,13 +27,9 @@ contract FlightSuretyApp {
     /*                               Flight registry                              */
     /* -------------------------------------------------------------------------- */
 
-    mapping(bytes32 => Flight) private flights;
-
     /* -------------------------------------------------------------------------- */
     /*                                  Insurance                                 */
     /* -------------------------------------------------------------------------- */
-
-    uint256 maxInsurance = 1 ether;
 
     /* -------------------------------------------------------------------------- */
     /*                              Storage contract                              */
@@ -44,13 +40,6 @@ contract FlightSuretyApp {
     /* -------------------------------------------------------------------------- */
     /*                                   Structs                                  */
     /* -------------------------------------------------------------------------- */
-
-    struct Flight {
-        bool isRegistered;
-        uint8 statusCode;
-        uint256 updatedTimestamp;
-        address airline;
-    }
 
     /* -------------------------------------------------------------------------- */
     /*                                   Events                                   */
@@ -88,10 +77,27 @@ contract FlightSuretyApp {
         _;
     }
 
-    modifier requireAmountBelowMaximum() {
+    modifier requireValidInsuranceRange() {
         require(
-            msg.value <= maxInsurance,
-            "Sent amount exceedes the maximum insurance price possible"
+            msg.value > 0 && msg.value <= fsdContract.getMaxInsurancePremium(),
+            "Sent amount is zero or exceedes the maximum insurance premium possible"
+        );
+        _;
+    }
+
+    modifier requireCompliantAirline(address airline) {
+        require(
+            fsdContract.isCompliantAirline(airline),
+            "Indicated airline is not compliant"
+        );
+        _;
+    }
+
+    modifier requireValidFlightCode(bytes32 flight) {
+        require(bytes32(flight).length > 0, "Flight code not specified");
+        require(
+            fsdContract.isValidFlightCode(flight),
+            "Indicated flight code is not valid"
         );
         _;
     }
@@ -139,7 +145,15 @@ contract FlightSuretyApp {
     /*                             Airline management                             */
     /* -------------------------------------------------------------------------- */
 
-    function registerAirline(
+    function getAirlineInfo(address airlineAddress)
+        external
+        view
+        returns (string memory name, string memory code)
+    {
+        return (fsdContract.getAirlineInfo(airlineAddress));
+    }
+
+    function submitAirlineRegistration(
         address airlineAddress,
         string calldata name,
         string calldata code
@@ -356,6 +370,26 @@ contract FlightSuretyApp {
 
         return random;
     }
+
+    function voteAirline(address airlineAddress) external {}
+
+    /* -------------------------- Insurance management -------------------------- */
+    function purchaseInsurance(address airline, bytes32 flight)
+        external
+        payable
+        requireIsOperational
+        requireValidInsuranceRange
+        requireCompliantAirline(airline)
+        requireValidFlightCode(flight)
+    {
+        address payable dataContract = address(uint160(address(fsdContract)));
+        dataContract.transfer(msg.value);
+        fsdContract.purchaseInsurance(airline, flight, msg.sender, msg.value);
+    }
+
+    function creditInsurees(bytes32 flight) external {}
+
+    function withdrawInsurancePayout() external {}
 }
 
 /* -------------------------------------------------------------------------- */
@@ -363,13 +397,20 @@ contract FlightSuretyApp {
 /* -------------------------------------------------------------------------- */
 
 contract FlightSuretyData {
+    /* -------------------------- Basic contract status ------------------------- */
     function isOperational() external view returns (bool);
 
     function isTestingMode() external view returns (bool);
 
     function isAuthorized() external view returns (bool);
 
+    /* --------------------------- Airline management --------------------------- */
     function getCountOperationalAirlines() external view returns (uint256);
+
+    function getAirlineInfo(address airlineAddress)
+        external
+        view
+        returns (string memory name, string memory code);
 
     function getAirlineVotes(address airlineAddress)
         external
@@ -383,4 +424,22 @@ contract FlightSuretyData {
     ) external;
 
     function voteAirline(address airlineAddress) external;
+
+    function isCompliantAirline(address airline) public view returns (bool);
+
+    function isValidFlightCode(bytes32 flight) public view returns (bool);
+
+    /* -------------------------- Insurance management -------------------------- */
+    function getMaxInsurancePremium() public view returns (uint256);
+
+    function purchaseInsurance(
+        address airline,
+        bytes32 flight,
+        address customer,
+        uint256 value
+    ) external payable;
+
+    function creditInsurees(bytes32 flight) external;
+
+    function withdrawInsurancePayout() external;
 }
