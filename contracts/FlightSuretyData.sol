@@ -59,17 +59,17 @@ contract FlightSuretyData {
     /* -------------------------------------------------------------------------- */
 
     struct Airline {
-        address id;
         bool isOperational;
         string name;
         string code;
     }
 
     struct Flight {
+        address airline;
         bool isRegistered;
         uint8 statusCode;
+        uint256 timestamp;
         uint256 updatedTimestamp;
-        address airline;
     }
 
     /* -------------------------------------------------------------------------- */
@@ -83,19 +83,22 @@ contract FlightSuretyData {
     event AirlineRegistered(address airline, string name, string code);
     event AirlineBlocked(address airline, string name, string code);
 
+    event FlightRegistered(address airline, bytes32 code, uint256 timestamp);
+    event FlightBlocked(address airline, bytes32 code);
+
     event FundsDeposited(address airline, uint256 amount);
     event FundsWithdrawn(address airline, uint256 amount);
 
     event InsurancePurchased(
         address airline,
-        bytes32 flight,
+        bytes32 flightCode,
         address account,
         uint256 amount
     );
 
     event InsurancePayoutCredited(
         address airline,
-        bytes32 flight,
+        bytes32 flightCode,
         address account,
         uint256 amount
     );
@@ -104,7 +107,7 @@ contract FlightSuretyData {
 
     event InsurancePremiumClaimed(
         address airline,
-        bytes32 flight,
+        bytes32 flightCode,
         address account,
         uint256 amount
     );
@@ -123,7 +126,7 @@ contract FlightSuretyData {
     ) public {
         require(firstAirline != address(0));
         airlineRegistry.push(firstAirline);
-        airlines[firstAirline] = Airline(firstAirline, true, name, code);
+        airlines[firstAirline] = Airline(true, name, code);
         countOperationalAirlines = countOperationalAirlines.add(1);
         operational = true;
         testing = false;
@@ -230,6 +233,7 @@ contract FlightSuretyData {
         external
         requireContractOwner
         requireIsOperational
+        requireDirectSender
     {
         require(testing != mode);
         testing = mode;
@@ -239,7 +243,11 @@ contract FlightSuretyData {
     /*                               Funding values                               */
     /* -------------------------------------------------------------------------- */
 
-    function setMinimumFunds(uint256 amount) public requireContractOwner {
+    function setMinimumFunds(uint256 amount)
+        public
+        requireContractOwner
+        requireIsOperational
+    {
         require(amount > 0);
         minimumFund = amount;
     }
@@ -263,6 +271,7 @@ contract FlightSuretyData {
     function authorizeCaller(address contractAddress)
         external
         requireContractOwner
+        requireDirectSender
         requireValidAddress(contractAddress)
     {
         authorizedCallers[contractAddress] = 1;
@@ -272,6 +281,8 @@ contract FlightSuretyData {
     function deauthorizeCaller(address contractAddress)
         external
         requireContractOwner
+        requireDirectSender
+        requireValidAddress(contractAddress)
     {
         delete authorizedCallers[contractAddress];
         emit CallerDeauthorized(contractAddress);
@@ -295,7 +306,7 @@ contract FlightSuretyData {
         require(bytes(airlines[airlineAddress].name).length == 0);
 
         airlineRegistry.push(airlineAddress);
-        airlines[airlineAddress] = Airline(airlineAddress, true, name, code);
+        airlines[airlineAddress] = Airline(true, name, code);
         countOperationalAirlines = countOperationalAirlines.add(1);
         emit AirlineRegistered(airlineAddress, name, code);
     }
@@ -304,6 +315,7 @@ contract FlightSuretyData {
         external
         requireIsOperational
         requireIsCallerAuthorized
+        requireProxySender
         requireIsFirstVote(airlineAddress)
         requireOperationalAirline(tx.origin)
         requireMinimumFundsCovered(tx.origin)
@@ -325,7 +337,9 @@ contract FlightSuretyData {
         external
         requireIsOperational
         requireIsCallerAuthorized
+        requireProxySender
         requireValidAddress(airlineAddress)
+        requireOperationalAirline(tx.origin)
         requireMinimumFundsCovered(tx.origin)
     {
         require(bytes(airlines[airlineAddress].name).length > 0);
@@ -392,100 +406,132 @@ contract FlightSuretyData {
         return airlineFundDeposits[airlineAddress];
     }
 
-    function fundDeposit()
-        public
-        payable
+    function fundDeposit(address airline, uint256 amount)
+        external
         requireIsOperational
-        requireDirectSender
+        requireProxySender
+        requireIsCallerAuthorized
+        requireValidAddress(airline)
     {
-        require(
-            msg.value >= minimumFund,
-            "Funds are not enough for the deposit"
-        );
-
-        airlineFundDeposits[msg.sender] = msg.value;
-        emit FundsDeposited(msg.sender, msg.value);
+        airlineFundDeposits[airline] = amount;
+        emit FundsDeposited(airline, amount);
     }
 
     /* -------------------------------------------------------------------------- */
     /*                              Flight management                             */
     /* -------------------------------------------------------------------------- */
 
-    function isValidFlightCode(bytes32 flight)
+    function registerFlight(
+        address airline,
+        bytes32 flightCode,
+        uint256 timestamp
+    )
+        external
+        requireIsOperational
+        requireProxySender
+        requireIsCallerAuthorized
+    {
+        require(flights[flightCode].airline == address(0));
+        flights[flightCode] = Flight(airline, true, 0, timestamp, 0);
+        emit FlightRegistered(airline, flightCode, timestamp);
+    }
+
+    function isValidFlightCode(bytes32 flightCode)
         external
         view
         returns (bool valid)
     {
-        return flights[flight].isRegistered == true;
+        return flights[flightCode].isRegistered == true;
+    }
+
+    function isOpenFlight(bytes32 flightCode)
+        external
+        view
+        returns (bool valid)
+    {
+        return
+            flights[flightCode].timestamp > now &&
+            flightInsuranceClosed[flightCode] == false;
     }
 
     /* -------------------------------------------------------------------------- */
     /*                            Insurance management                            */
     /* -------------------------------------------------------------------------- */
 
+    function getMaxInsurancePremium() external view returns (uint256 max) {
+        return maxInsurancePremium;
+    }
+
+    function getCustomerInsurancePremium(
+        address airline,
+        bytes32 flightCode,
+        address account
+    ) external view returns (uint256 premium) {
+        return (insuranceBalances[airline][flightCode][account]);
+    }
+
     function purchaseInsurance(
         address airline,
-        bytes32 flight,
+        bytes32 flightCode,
+        address customer,
         uint256 amount
     )
-        external
-        payable
+        external        
         requireIsOperational
         requireProxySender
         requireIsCallerAuthorized
         requireValidAddress(airline)
     {
-        insuredAccounts[airline][flight].push(tx.origin);
-        uint256 newBalance = insuranceBalances[airline][flight][tx.origin].add(
-            msg.value
-        );
-        insuranceBalances[airline][flight][tx.origin] = newBalance;
-        emit InsurancePurchased(airline, flight, tx.origin, amount);
+        insuredAccounts[airline][flightCode].push(customer);
+        uint256 oldBalance = insuranceBalances[airline][flightCode][customer];
+        uint256 newBalance = oldBalance.add(amount);
+        insuranceBalances[airline][flightCode][customer] = newBalance;
+        emit InsurancePurchased(airline, flightCode, customer, amount);
     }
 
-    function creditInsuree(bytes32 flight, address account) internal {
-        require(insuranceBalances[tx.origin][flight][account] > 0);
-        uint256 premium = insuranceBalances[tx.origin][flight][account];
+    function creditInsuree(bytes32 flightCode, address account) internal {
+        require(insuranceBalances[tx.origin][flightCode][account] > 0);
+        uint256 premium = insuranceBalances[tx.origin][flightCode][account];
         uint256 credit = premium.div(2).mul(3);
-        insuranceBalances[tx.origin][flight][account] = 0;
+        insuranceBalances[tx.origin][flightCode][account] = 0;
         insurancePayouts[account] = credit;
-        emit InsurancePayoutCredited(tx.origin, flight, account, credit);
+        emit InsurancePayoutCredited(tx.origin, flightCode, account, credit);
     }
 
-    function creditInsurees(bytes32 flight)
+    function creditInsurees(bytes32 flightCode)
         external
         requireIsOperational
         requireProxySender
         requireIsCallerAuthorized
     {
-        require(insuredAccounts[tx.origin][flight].length > 0);
-        address[] storage accounts = insuredAccounts[tx.origin][flight];
+        require(insuredAccounts[tx.origin][flightCode].length > 0);
+        address[] storage accounts = insuredAccounts[tx.origin][flightCode];
         for (uint256 a = 0; a < accounts.length; a++) {
-            creditInsuree(flight, accounts[a]);
+            creditInsuree(flightCode, accounts[a]);
         }
     }
 
-    function claimPremium(bytes32 flight, address account)
+    function claimPremium(bytes32 flightCode, address account)
         internal
         requireOperationalAirline(tx.origin)
     {
-        require(insuranceBalances[tx.origin][flight][account] > 0);
-        uint256 premium = insuranceBalances[tx.origin][flight][account];
-        insuranceBalances[tx.origin][flight][account] = 0;
+        require(insuranceBalances[tx.origin][flightCode][account] > 0);
+        uint256 premium = insuranceBalances[tx.origin][flightCode][account];
+        insuranceBalances[tx.origin][flightCode][account] = 0;
 
-        emit InsurancePremiumClaimed(tx.origin, flight, account, premium);
+        emit InsurancePremiumClaimed(tx.origin, flightCode, account, premium);
     }
 
-    function claimPremiums(bytes32 flight)
+    function claimPremiums(bytes32 flightCode)
         external
         requireIsOperational
         requireProxySender
         requireIsCallerAuthorized
     {
-        require(insuredAccounts[tx.origin][flight].length > 0);
-        address[] storage accounts = insuredAccounts[tx.origin][flight];
+        require(insuredAccounts[tx.origin][flightCode].length > 0);
+        address[] storage accounts = insuredAccounts[tx.origin][flightCode];
         for (uint256 a = 0; a < accounts.length; a++) {
-            claimPremium(flight, accounts[a]);
+            claimPremium(flightCode, accounts[a]);
         }
     }
 
@@ -502,5 +548,13 @@ contract FlightSuretyData {
         emit InsurancePayoutWithdrawn(tx.origin, payout);
     }
 
-    function() external payable {}
+    function fund() private {
+        if (msg.value > 0) {
+            emit ContractReceivedFunds(tx.origin, msg.value);
+        }
+    }
+
+    function() external payable {
+        fund();
+    }
 }

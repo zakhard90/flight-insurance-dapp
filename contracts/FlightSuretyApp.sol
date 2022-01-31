@@ -45,6 +45,7 @@ contract FlightSuretyApp {
     /*                                   Events                                   */
     /* -------------------------------------------------------------------------- */
 
+    event SurplusRefunded(address customer, uint256 amount);
     event QuorumChanged(uint256 oldQuorum, uint256 newQuorum);
 
     /* -------------------------------------------------------------------------- */
@@ -77,14 +78,6 @@ contract FlightSuretyApp {
         _;
     }
 
-    modifier requireValidInsuranceRange() {
-        require(
-            msg.value > 0 && msg.value <= fsdContract.getMaxInsurancePremium(),
-            "Sent amount is zero or exceedes the maximum insurance premium possible"
-        );
-        _;
-    }
-
     modifier requireCompliantAirline(address airline) {
         require(
             fsdContract.isCompliantAirline(airline),
@@ -93,11 +86,19 @@ contract FlightSuretyApp {
         _;
     }
 
-    modifier requireValidFlightCode(bytes32 flight) {
-        require(bytes32(flight).length > 0, "Flight code not specified");
+    modifier requireValidFlightCode(bytes32 flightCode) {
+        require(flightCode.length > 0, "Flight code not specified");
         require(
-            fsdContract.isValidFlightCode(flight),
+            fsdContract.isValidFlightCode(flightCode),
             "Indicated flight code is not valid"
+        );
+        _;
+    }
+
+    modifier requireOpenFlight(bytes32 flightCode) {
+        require(
+            fsdContract.isOpenFlight(flightCode),
+            "Indicated flight code is closed"
         );
         _;
     }
@@ -150,7 +151,21 @@ contract FlightSuretyApp {
         view
         returns (string memory name, string memory code)
     {
-        return (fsdContract.getAirlineInfo(airlineAddress));
+        return fsdContract.getAirlineInfo(airlineAddress);
+    }
+
+    function isOperationalAirline(address airlineAddress)
+        external
+        view
+        returns (bool)
+    {
+        return fsdContract.isOperationalAirline(airlineAddress);
+    }
+
+    function fundDeposit() external payable requireIsOperational {
+        address payable dataContract = address(uint160(address(fsdContract)));
+        dataContract.transfer(msg.value);
+        fsdContract.fundDeposit(msg.sender, msg.value);
     }
 
     function submitAirlineRegistration(
@@ -174,7 +189,22 @@ contract FlightSuretyApp {
     /*                              Flight management                             */
     /* -------------------------------------------------------------------------- */
 
-    function registerFlight() external pure {}
+    function isValidFlight(bytes32 flightCode)
+        external
+        view
+        returns (bool registered)
+    {
+        return fsdContract.isValidFlightCode(flightCode);
+    }
+
+    function registerFlight(string calldata flight, uint256 timestamp)
+        external
+        requireIsOperational
+        requireCompliantAirline(msg.sender)
+    {
+        bytes32 flightCode = getFlightKey(msg.sender, flight, timestamp);
+        fsdContract.registerFlight(msg.sender, flightCode, timestamp);
+    }
 
     function processFlightStatus(
         address airline,
@@ -373,21 +403,65 @@ contract FlightSuretyApp {
 
     function voteAirline(address airlineAddress) external {}
 
-    /* -------------------------- Insurance management -------------------------- */
-    function purchaseInsurance(address airline, bytes32 flight)
+    /* -------------------------------------------------------------------------- */
+    /*                            Insurance management                            */
+    /* -------------------------------------------------------------------------- */
+    function getCustomerInsurancePremium(
+        address airline,
+        bytes32 flightCode,
+        address account
+    ) external view returns (uint256) {
+        return
+            fsdContract.getCustomerInsurancePremium(
+                airline,
+                flightCode,
+                account
+            );
+    }
+
+    function purchaseInsurance(address airline, bytes32 flightCode)
         external
         payable
         requireIsOperational
-        requireValidInsuranceRange
         requireCompliantAirline(airline)
-        requireValidFlightCode(flight)
+        requireValidFlightCode(flightCode)
+        requireOpenFlight(flightCode)
     {
+        require(msg.value > 0, "Sent amount is zero");
+        uint256 insuredValue = fsdContract.getCustomerInsurancePremium(
+            airline,
+            flightCode,
+            msg.sender
+        );
+        uint256 maxPremium = fsdContract.getMaxInsurancePremium();
+
+        require(
+            insuredValue < maxPremium,
+            "Insured amount already covers the maximum possible premium"
+        );
+        uint256 value = msg.value;
+        uint256 total = value.add(insuredValue);
+
+        uint256 amount;
+        uint256 refund;
+        if (total > maxPremium) {
+            refund = total.sub(maxPremium);
+            amount = value.sub(refund);
+        } else {
+            refund = 0;
+            amount = value;
+        }
+
         address payable dataContract = address(uint160(address(fsdContract)));
-        dataContract.transfer(msg.value);
-        fsdContract.purchaseInsurance(airline, flight, msg.sender, msg.value);
+        dataContract.transfer(amount);
+        fsdContract.purchaseInsurance(airline, flightCode, msg.sender, amount);
+        if (refund > 0) {
+            msg.sender.transfer(refund);
+            emit SurplusRefunded(msg.sender, refund);
+        }
     }
 
-    function creditInsurees(bytes32 flight) external {}
+    function creditInsurees(bytes32 flightCode) external {}
 
     function withdrawInsurancePayout() external {}
 }
@@ -407,15 +481,17 @@ contract FlightSuretyData {
     /* --------------------------- Airline management --------------------------- */
     function getCountOperationalAirlines() external view returns (uint256);
 
+    function isOperationalAirline(address airlineAddress)
+        external
+        view
+        returns (bool);
+
     function getAirlineInfo(address airlineAddress)
         external
         view
         returns (string memory name, string memory code);
 
-    function getAirlineVotes(address airlineAddress)
-        external
-        view
-        returns (uint256);
+    function fundDeposit(address airline, uint256 amount) external;
 
     function registerAirline(
         address airlineAddress,
@@ -423,23 +499,49 @@ contract FlightSuretyData {
         string calldata code
     ) external;
 
+    function getAirlineVotes(address airlineAddress)
+        external
+        view
+        returns (uint256);
+
     function voteAirline(address airlineAddress) external;
 
     function isCompliantAirline(address airline) public view returns (bool);
 
-    function isValidFlightCode(bytes32 flight) public view returns (bool);
+    function isValidFlightCode(bytes32 flightCode) public view returns (bool);
+
+    function isOpenFlight(bytes32 flightCode) public view returns (bool);
+
+    /* ---------------------------- Flight management --------------------------- */
+    function registerFlight(
+        address airline,
+        bytes32 flightCode,
+        uint256 timestamp
+    ) external;
+
+    function updateFlight(
+        bytes32 flightCode,
+        uint256 newTimestamp,
+        uint8 statusCode
+    ) external;
 
     /* -------------------------- Insurance management -------------------------- */
     function getMaxInsurancePremium() public view returns (uint256);
 
+    function getCustomerInsurancePremium(
+        address airline,
+        bytes32 flightCode,
+        address customer
+    ) public view returns (uint256);
+
     function purchaseInsurance(
         address airline,
-        bytes32 flight,
+        bytes32 flightCode,
         address customer,
         uint256 value
-    ) external payable;
+    ) external;
 
-    function creditInsurees(bytes32 flight) external;
+    function creditInsurees(bytes32 flightCode) external;
 
     function withdrawInsurancePayout() external;
 }

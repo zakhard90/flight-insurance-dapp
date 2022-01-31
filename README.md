@@ -8,6 +8,9 @@
 
 ### Voting process and Airline registration
 
+App contract functions:
+- Airline registration and voting logic (API)
+
 Due to the separation of concernes principle, the voting mechanisms are delegated 
 entirely to the application contract. This choice has been made because of the possible
 changes that the voting logic might require at scale. The data contract is meant to keep 

@@ -1,6 +1,6 @@
-var FlightSuretyApp = artifacts.require("FlightSuretyApp");
-var FlightSuretyData = artifacts.require("FlightSuretyData");
-var BigNumber = require('bignumber.js');
+var FlightSuretyApp = artifacts.require("FlightSuretyApp")
+var FlightSuretyData = artifacts.require("FlightSuretyData")
+var BigNumber = require('bignumber.js')
 
 var Config = async function (accounts) {
 
@@ -16,47 +16,58 @@ var Config = async function (accounts) {
         "0xcbd22ff1ded1423fbc24a7af2148745878800024",
         "0xc257274276a4e539741ca11b590b9447b26a8051",
         "0x2f2899d6d35b1a48a4fbdc93a37a72f264a9fca7"
-    ];
+    ]
 
 
-    let owner = accounts[0];
+    let owner = accounts[0]
 
     let firstAirlineData = {
         address: accounts[1],
         name: "Genesis Airlines",
         code: "GA01"
-    };
+    }
 
-    let otherAirlines = [];
+    let otherAirlines = []
     for (let i = 1; i <= 5; i++) {
         otherAirlines.push({
             address: accounts[i + 1],
             name: "European Airlines",
             code: "EA0" + (i + 1)
-        });
+        })
     }
 
-    let customers = [];
+    let customers = []
     let names = ["Oscar Wylde", "Mark Twain", "Mary Shelley"]
-    n = 0;
+    n = 0
     for (let i = 6; i <= 8; i++) {
         customers.push({
             address: accounts[i + 1],
             name: names[n],
             code: "CU0" + ++n
-        });
+        })
     }
 
-    let flightSuretyData = await FlightSuretyData.deployed();
-    await FlightSuretyApp.detectNetwork();
-    await FlightSuretyApp.link('FlightSuretyData', flightSuretyData.address);
-    let flightSuretyApp = await FlightSuretyApp.deployed();
+    let flights = [{
+        description: "Rome - New York",
+        scheduled: "Sunday, March 13, 2022 3:20:00 PM",
+        timestamp: 1647184800
+    }, {
+        description: "Kyiv - Stockholm",
+        scheduled: "Monday, February 28, 2022 1:50:00 PM",
+        timestamp: 1646056200
+    },
+    ]
+
+    let flightSuretyData = await FlightSuretyData.deployed()
+    await FlightSuretyApp.detectNetwork()
+    await FlightSuretyApp.link('FlightSuretyData', flightSuretyData.address)
+    let flightSuretyApp = await FlightSuretyApp.deployed()
 
     console.log()
     console.log("**************************")
-    console.log(flightSuretyData.address, "FlightSuretyData address");
-    console.log(flightSuretyApp.address, "FlightSuretyApp address");
-    console.log(firstAirlineData.address, "first airline address");
+    console.log(flightSuretyData.address, "FlightSuretyData address")
+    console.log(flightSuretyApp.address, "FlightSuretyApp address")
+    console.log(firstAirlineData.address, "first airline address")
     console.log("**************************")
     console.log()
 
@@ -66,6 +77,7 @@ var Config = async function (accounts) {
         otherAirlines: otherAirlines,
         customers: customers,
         weiMultiple: (new BigNumber(10)).pow(18),
+        flights: flights,
         testAddresses: testAddresses,
         flightSuretyData: flightSuretyData,
         flightSuretyApp: flightSuretyApp
@@ -74,4 +86,4 @@ var Config = async function (accounts) {
 
 module.exports = {
     Config: Config
-};
+}

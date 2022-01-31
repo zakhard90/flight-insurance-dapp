@@ -82,7 +82,7 @@ contract('Flight Surety Tests', async (accounts) => {
         for (let i = min; i < max; i++) {
             let newAirline = config.otherAirlines[i]
             let fromAddress = i == 0 ? firstAirline.address : config.otherAirlines[i - 1].address
-            await config.flightSuretyData.fundDeposit({ from: fromAddress, value: amount })
+            await config.flightSuretyApp.fundDeposit({ from: fromAddress, value: amount })
             await config.flightSuretyApp.submitAirlineRegistration(newAirline.address, newAirline.name, newAirline.code, { from: fromAddress })
             let airline = await config.flightSuretyApp.getAirlineInfo.call(newAirline.address)
             assert.equal(airline.name, newAirline.name, `Incorrect new airline ${i} name`)
@@ -179,7 +179,7 @@ contract('Flight Surety Tests', async (accounts) => {
     it(`(admin) can block access to functions using requireIsOperational when operating status is false`, async function () {
 
         await config.flightSuretyData.setOperational(false, { from: config.owner })
-        let operational = await config.flightSuretyData.isOperational.call({ from: config.owner })
+        let operational = await config.flightSuretyApp.isOperational.call({ from: config.owner })
         assert.equal(operational, false, "Contract data is operational but should not be")
         let reverted = false
 
@@ -214,9 +214,24 @@ contract('Flight Surety Tests', async (accounts) => {
         }
 
         assert.equal(rejected, true, "The registration hasn't been rejected with 0 funds")
-        let result = await config.flightSuretyData.isOperationalAirline.call(newAirline.address)
+        let result = await config.flightSuretyApp.isOperationalAirline.call(newAirline.address)
         assert.equal(result, false, "Airline should not be able to register another airline if it hasn't provided funding")
 
+    })
+    /* -------------------------------------------------------------------------- */
+    /*                                   Flight                                   */
+    /* -------------------------------------------------------------------------- */
+
+    /* ------------------- Verify flight registration process ------------------- */
+    it('(flight) can register a new flight', async () => {
+        const { flights, otherAirlines } = config;
+        let flight = flights[0]
+        let airline = otherAirlines[1]
+
+        let flightCode = web3.utils.soliditySha3(airline.address, flight.description, flight.timestamp)
+        await config.flightSuretyApp.registerFlight(flight.description, flight.timestamp, { from: airline.address })
+        let validFlight = await config.flightSuretyApp.isValidFlight(flightCode)
+        assert.equal(validFlight, true, "Flight has not been registered")
     })
 
     /* -------------------------------------------------------------------------- */
@@ -224,14 +239,30 @@ contract('Flight Surety Tests', async (accounts) => {
     /* -------------------------------------------------------------------------- */
 
     /* ------------------ Verify correct purchase functionality ----------------- */
-/*
     it('(insurance) can purchase an insurance for a defined flight', async () => {
-        let airline = config.otherAirlines[1]
-        let flight = web3.utils.asciiToHex("ef123246547cd")
+        const { flights, otherAirlines } = config;
+        let flight = flights[0]
+        let airline = otherAirlines[1]
+        let flightCode = web3.utils.soliditySha3(airline.address, flight.description, flight.timestamp)
         let amount = Web3.utils.toWei("0.5", "ether")
         let customer = config.customers[0]
-        await config.flightSuretyApp.purchaseInsurance(airline.address, flight, { from: customer.address, value: amount })
-    });*/
+        await config.flightSuretyApp.purchaseInsurance(airline.address, flightCode, { from: customer.address, value: amount })
+        let premium = await config.flightSuretyApp.getCustomerInsurancePremium.call(airline.address, flightCode, customer.address)
+        assert.equal(BigNumber(premium).toNumber(), amount, "The insurance purchase value doesn't match");
+    })
+    /* ------------------- Verify the maximum allowed purchase ------------------ */
+    it('(insurance) can purchase an insurance over the maximum value of ETH', async () => {
+        const { flights, otherAirlines } = config;
+        let flight = flights[0]
+        let airline = otherAirlines[1]
+        let flightCode = web3.utils.soliditySha3(airline.address, flight.description, flight.timestamp)
+        let max = Web3.utils.toWei("1", "ether")
+        let amount = Web3.utils.toWei("1.5", "ether")
+        let customer = config.customers[1]
+        await config.flightSuretyApp.purchaseInsurance(airline.address, flightCode, { from: customer.address, value: amount })
+        let premium = await config.flightSuretyApp.getCustomerInsurancePremium.call(airline.address, flightCode, customer.address)
+        assert.equal(BigNumber(premium).toNumber(), max, "The insurance purchase doesn't match the max allowed value");
+    })
     /* ------------ Verify credit functionality for a delayed flight ------------ */
 
     /* ------------------------ Verify payout withdrawal ------------------------ */
