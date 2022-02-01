@@ -9,12 +9,12 @@ contract FlightSuretyApp {
     /*                                  Constants                                 */
     /* -------------------------------------------------------------------------- */
 
-    uint8 private constant STATUS_CODE_UNKNOWN = 0;
-    uint8 private constant STATUS_CODE_ON_TIME = 10;
-    uint8 private constant STATUS_CODE_LATE_AIRLINE = 20;
-    uint8 private constant STATUS_CODE_LATE_WEATHER = 30;
-    uint8 private constant STATUS_CODE_LATE_TECHNICAL = 40;
-    uint8 private constant STATUS_CODE_LATE_OTHER = 50;
+    uint8 private constant CODE_UNKNOWN = 0;
+    uint8 private constant CODE_ON_TIME = 10;
+    uint8 private constant CODE_LATE_AIRLINE = 20;
+    uint8 private constant CODE_LATE_WEATHER = 30;
+    uint8 private constant CODE_LATE_TECHNICAL = 40;
+    uint8 private constant CODE_LATE_OTHER = 50;
 
     /* -------------------------------------------------------------------------- */
     /*                               Main parameters                              */
@@ -162,6 +162,14 @@ contract FlightSuretyApp {
         return fsdContract.isOperationalAirline(airlineAddress);
     }
 
+    function getAirlineFundDeposit(address airlineAddress)
+        external
+        view
+        returns (uint256)
+    {
+        return fsdContract.getAirlineFundDeposit(airlineAddress);
+    }
+
     function fundDeposit() external payable requireIsOperational {
         address payable dataContract = address(uint160(address(fsdContract)));
         dataContract.transfer(msg.value);
@@ -204,6 +212,13 @@ contract FlightSuretyApp {
     {
         bytes32 flightCode = getFlightKey(msg.sender, flight, timestamp);
         fsdContract.registerFlight(msg.sender, flightCode, timestamp);
+    }
+
+    function updateFlight(bytes32 flightCode, uint256 newTimestamp, uint8 status)
+        external
+        requireIsOperational
+    {
+        fsdContract.updateFlight(flightCode, newTimestamp, status);
     }
 
     function processFlightStatus(
@@ -419,6 +434,14 @@ contract FlightSuretyApp {
             );
     }
 
+    function getCustomerInsurancePayout(address account)
+        external
+        view
+        returns (uint256)
+    {
+        return fsdContract.getCustomerInsurancePayout(account);
+    }
+
     function purchaseInsurance(address airline, bytes32 flightCode)
         external
         payable
@@ -461,9 +484,22 @@ contract FlightSuretyApp {
         }
     }
 
-    function creditInsurees(bytes32 flightCode) external {}
+    function claimOrCredit(bytes32 flightCode)
+        external
+        requireIsOperational
+        requireCompliantAirline(msg.sender)
+        requireValidFlightCode(flightCode)
+    {
+        if (fsdContract.getFlightStatus(flightCode) == CODE_LATE_AIRLINE) {
+            fsdContract.creditInsurees(msg.sender, flightCode);
+        } else {
+            fsdContract.claimPremiums(msg.sender, flightCode);
+        }
+    }
 
-    function withdrawInsurancePayout() external {}
+    function withdrawInsurancePayout() external requireIsOperational {
+        fsdContract.withdrawInsurancePayout(msg.sender);
+    }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -480,6 +516,8 @@ contract FlightSuretyData {
 
     /* --------------------------- Airline management --------------------------- */
     function getCountOperationalAirlines() external view returns (uint256);
+    
+    function getAirlineFundDeposit(address airlineAddress) external view returns (uint256);
 
     function isOperationalAirline(address airlineAddress)
         external
@@ -525,6 +563,8 @@ contract FlightSuretyData {
         uint8 statusCode
     ) external;
 
+    function getFlightStatus(bytes32 flightCode) external returns (uint8);
+
     /* -------------------------- Insurance management -------------------------- */
     function getMaxInsurancePremium() public view returns (uint256);
 
@@ -534,6 +574,11 @@ contract FlightSuretyData {
         address customer
     ) public view returns (uint256);
 
+    function getCustomerInsurancePayout(address customer)
+        public
+        view
+        returns (uint256);
+
     function purchaseInsurance(
         address airline,
         bytes32 flightCode,
@@ -541,7 +586,9 @@ contract FlightSuretyData {
         uint256 value
     ) external;
 
-    function creditInsurees(bytes32 flightCode) external;
+    function creditInsurees(address airline, bytes32 flightCode) external;
 
-    function withdrawInsurancePayout() external;
+    function claimPremiums(address airline, bytes32 flightCode) external;
+
+    function withdrawInsurancePayout(address payable account) external;
 }

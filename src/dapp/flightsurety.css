@@ -1,15 +1,50 @@
-body {
-    background-image: url('flight.jpg'); /* Source: iStockPhoto */
-    background-repeat: no-repeat;
-    background-size: cover;
+html {
+    height: 100vh;
 }
 
-.container {
-    margin-top: 400px;
-    background-color: #000;
+body {
+    background-repeat: no-repeat;
+    background-color: #5688b7;
+    background-size: cover;
+    background-position: center center;
+}
+
+body.bgr-landing {
+    background-image: url("flight.jpg"); /*Photo by John McArthur on Unsplash*/
+}
+
+body.bgr-airlines {
+    background-image: url("flight-airlines.jpg"); /*Photo by kychan on Unsplash*/
+}
+
+body.bgr-insurance {
+    background-image: url("flight-insurance.jpg"); /*Photo by Nikola Ancevski on Unsplash*/
+}
+
+body.bgr-oracles {
+    background-image: url("flight-oracles.jpg"); /*Photo by CHUTTERSNAP on Unsplash*/
+}
+
+footer {
+    bottom: 0;
+    width: 100%;
+    position: fixed;
+    background-color: rgba(255, 255, 255, 0.55);
+    backdrop-filter: blur(10px);
+    padding: 0.5rem;
+}
+
+.box {
+    margin-top: 30vh;
+    width: 30rem;
+    max-width: 90vw;
+    margin-right: 5vw;
+    margin-left: auto;
     opacity: 0.9;
-    color: #fff;
+    color: #333;
     padding: 40px;
+    background-color: rgba(255, 255, 255, 0.55);
+    backdrop-filter: blur(10px);
 }
 
 .top-20 {
@@ -39,4 +74,29 @@ label.form {
 }
 input {
     margin-right: 30px;
+}
+.status-indicator {
+    line-height: 1.5rem;
+}
+.status-indicator #status-light {
+    width: 1rem;
+    height: 1rem;
+    display: block;
+    color: #fff;
+    font-size: 0.5rem;
+    text-align: center;
+    line-height: 1rem;
+}
+.status-indicator #status-label {
+    font-size: 0.85rem;
+    line-height: 1.2;
+}
+
+.navbar-dark .navbar-nav .nav-link {
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.navbar-dark .navbar-nav .nav-link:focus,
+.navbar-dark .navbar-nav .nav-link:hover {
+    color: rgba(255, 255, 255, 0.95);
 }

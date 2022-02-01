@@ -85,9 +85,22 @@ contract FlightSuretyData {
 
     event FlightRegistered(address airline, bytes32 code, uint256 timestamp);
     event FlightBlocked(address airline, bytes32 code);
+    event FlightUpdated(
+        bytes32 code,
+        uint256 oldTime,
+        uint256 newTime,
+        uint8 oldStatus,
+        uint8 newStatus
+    );
 
     event FundsDeposited(address airline, uint256 amount);
     event FundsWithdrawn(address airline, uint256 amount);
+
+    event InsureePayoutPrepared(
+        address airline,
+        bytes32 flightCode,
+        address account
+    );
 
     event InsurancePurchased(
         address airline,
@@ -371,6 +384,14 @@ contract FlightSuretyData {
         return airlineFundDeposits[airlineAddress] >= minimumFund;
     }
 
+    function getAirlineFundDeposit(address airlineAddress)
+        external
+        view
+        returns (uint256 deposit)
+    {
+        return airlineFundDeposits[airlineAddress];
+    }
+
     function isCompliantAirline(address airlineAddress)
         external
         view
@@ -436,6 +457,35 @@ contract FlightSuretyData {
         emit FlightRegistered(airline, flightCode, timestamp);
     }
 
+    function updateFlight(
+        bytes32 flightCode,
+        uint256 timestamp,
+        uint8 status
+    )
+        external
+        requireIsOperational
+        requireProxySender
+        requireIsCallerAuthorized
+    {
+        require(flights[flightCode].airline != address(0));
+        uint256 oldTimestamp = flights[flightCode].timestamp;
+        uint8 oldStatus = flights[flightCode].statusCode;
+        flights[flightCode].statusCode = status;
+        flights[flightCode].updatedTimestamp = timestamp;
+
+        emit FlightUpdated(
+            flightCode,
+            oldTimestamp,
+            timestamp,
+            oldStatus,
+            status
+        );
+    }
+
+    function getFlightStatus(bytes32 flightCode) external view returns (uint8) {
+        return (flights[flightCode].statusCode);
+    }
+
     function isValidFlightCode(bytes32 flightCode)
         external
         view
@@ -470,13 +520,21 @@ contract FlightSuretyData {
         return (insuranceBalances[airline][flightCode][account]);
     }
 
+    function getCustomerInsurancePayout(address account)
+        external
+        view
+        returns (uint256 payout)
+    {
+        return (insurancePayouts[account]);
+    }
+
     function purchaseInsurance(
         address airline,
         bytes32 flightCode,
         address customer,
         uint256 amount
     )
-        external        
+        external
         requireIsOperational
         requireProxySender
         requireIsCallerAuthorized
@@ -489,63 +547,69 @@ contract FlightSuretyData {
         emit InsurancePurchased(airline, flightCode, customer, amount);
     }
 
-    function creditInsuree(bytes32 flightCode, address account) internal {
-        require(insuranceBalances[tx.origin][flightCode][account] > 0);
-        uint256 premium = insuranceBalances[tx.origin][flightCode][account];
+    function creditInsuree(
+        address airline,
+        bytes32 flightCode,
+        address account
+    ) internal {
+        require(insuranceBalances[airline][flightCode][account] > 0);
+        uint256 premium = insuranceBalances[airline][flightCode][account];
         uint256 credit = premium.div(2).mul(3);
-        insuranceBalances[tx.origin][flightCode][account] = 0;
+        insuranceBalances[airline][flightCode][account] = 0;
         insurancePayouts[account] = credit;
-        emit InsurancePayoutCredited(tx.origin, flightCode, account, credit);
+        emit InsurancePayoutCredited(airline, flightCode, account, credit);
     }
 
-    function creditInsurees(bytes32 flightCode)
+    function creditInsurees(address airline, bytes32 flightCode)
         external
         requireIsOperational
         requireProxySender
         requireIsCallerAuthorized
     {
-        require(insuredAccounts[tx.origin][flightCode].length > 0);
-        address[] storage accounts = insuredAccounts[tx.origin][flightCode];
+        require(insuredAccounts[airline][flightCode].length > 0);
+        address[] storage accounts = insuredAccounts[airline][flightCode];
         for (uint256 a = 0; a < accounts.length; a++) {
-            creditInsuree(flightCode, accounts[a]);
+            creditInsuree(airline, flightCode, accounts[a]);
         }
+        flightInsuranceClosed[flightCode] = true;
     }
 
-    function claimPremium(bytes32 flightCode, address account)
-        internal
-        requireOperationalAirline(tx.origin)
-    {
-        require(insuranceBalances[tx.origin][flightCode][account] > 0);
-        uint256 premium = insuranceBalances[tx.origin][flightCode][account];
-        insuranceBalances[tx.origin][flightCode][account] = 0;
-
-        emit InsurancePremiumClaimed(tx.origin, flightCode, account, premium);
+    function claimPremium(
+        address airline,
+        bytes32 flightCode,
+        address account
+    ) internal requireOperationalAirline(airline) {
+        require(insuranceBalances[airline][flightCode][account] > 0);
+        uint256 premium = insuranceBalances[airline][flightCode][account];
+        insuranceBalances[airline][flightCode][account] = 0;
+        emit InsurancePremiumClaimed(airline, flightCode, account, premium);
     }
 
-    function claimPremiums(bytes32 flightCode)
+    function claimPremiums(address airline, bytes32 flightCode)
         external
         requireIsOperational
         requireProxySender
         requireIsCallerAuthorized
     {
-        require(insuredAccounts[tx.origin][flightCode].length > 0);
-        address[] storage accounts = insuredAccounts[tx.origin][flightCode];
+        require(insuredAccounts[airline][flightCode].length > 0);
+        address[] storage accounts = insuredAccounts[airline][flightCode];
         for (uint256 a = 0; a < accounts.length; a++) {
-            claimPremium(flightCode, accounts[a]);
+            claimPremium(airline, flightCode, accounts[a]);
         }
+        flightInsuranceClosed[flightCode] = true;
     }
 
-    function withdrawInsurancePayout()
+    function withdrawInsurancePayout(address payable account)
         external
         requireIsOperational
         requireProxySender
         requireIsCallerAuthorized
     {
-        require(insurancePayouts[tx.origin] > 0);
-        uint256 payout = insurancePayouts[tx.origin];
-        insurancePayouts[tx.origin] = 0;
-        tx.origin.transfer(payout);
-        emit InsurancePayoutWithdrawn(tx.origin, payout);
+        require(insurancePayouts[account] > 0);
+        uint256 payout = insurancePayouts[account];
+        insurancePayouts[account] = 0;
+        account.transfer(payout);
+        emit InsurancePayoutWithdrawn(account, payout);
     }
 
     function fund() private {

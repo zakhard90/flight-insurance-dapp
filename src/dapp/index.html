@@ -5,28 +5,112 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <title>FlightSurety</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.1.1/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.1.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.css">
 </head>
 
-<body>
+<body class="bgr-landing">
 
-    <nav class="navbar navbar-expand-md navbar-dark bg-dark fixed-top">
-        <a class="navbar-brand" href="#">FlightSurety</a>
+    <nav class="navbar navbar-expand-md navbar-dark bg-danger fixed-top">
+        <a class="navbar-brand" href="#" data-link="landing">
+            <span class="fa-stack fa-lg">
+                <i class="fa fa-circle fa-stack-2x"></i>
+                <i class="fa fa-plane fa-stack-1x text-danger"></i>
+            </span>
+            FlightSurety
+        </a>
+        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+            <ul class="navbar-nav ml-auto float-right">
+                <li class="nav-item">
+                    <a class="nav-link js-metamask d-none" href="#" data-link="airlines">Register Airline</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link js-metamask d-none" href="#" data-link="insurance">Buy Insurance</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link js-metamask d-none" href="#" data-link="oracles">Flight radar</a>
+                </li>
+            </ul>
+        </div>
         <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarsExampleDefault"
             aria-controls="navbarsExampleDefault" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
     </nav>
 
-    <main class="container">
-        <div id="display-wrapper" class="top-20">
+    <main class="container-fluid">
+        <div id="landing" class="box">
+            <div class="row top-20 text-center">
+                <div class="col-md-12">
+                    <h2>Welcome to FlightSurety</h2>
+                    <h5>Some are lucky, others are insured</h5>
+                    <button class="btn btn-primary mt-4 btn-block" id="connect-wallet">Connect to Metamask</button>
+                </div>
+            </div>
         </div>
-        <div class="row top-20">
-            <label class="form">Flight</label> <input type="text" id="flight-number">
-            <btn class="btn btn-primary" id="submit-oracle">Submit to Oracles</btn>
+        <div id="airlines" class="box d-none">
+            <div class="row top-20">
+                <div class="col-md-12">
+                    <h3>Airline registration</h3>
+                    <hr>
+                    <span>
+                        <strong>Current deposit</strong>: <span id="deposit">0</span> ETH
+                    </span>
+                    <a href="#" id="deposit-funds" class="btn btn-light float-right">Deposit funds</a>
+                    <div class="clearfix"></div>
+                    <hr>
+                    <label class="form">Airline address</label>
+                    <input type="text" id="airline-address" class="form-control">
+                    <label class="form">Airline name</label>
+                    <input type="text" id="airline-name" class="form-control">
+                    <label class="form">Airline code</label>
+                    <input type="text" id="airline-code" class="form-control" maxlength="4">
+                    <button class="btn btn-primary mt-2 float-right" id="submit-airline">Submit registration</button>
+                </div>
+            </div>
+        </div>
+        <div id="insurance" class="box d-none">
+            <div class="row top-20">
+                <div class="col-md-12">
+                    <h3>Insurance</h3>
+                    <hr>
+                    <label class="form">Flight</label>
+                    <input type="text" id="insurance-flight" class="form-control">
+                    <label class="form">Airline code</label>
+                    <input type="text" id="insurance-airline" class="form-control">
+                    <button class="btn btn-primary mt-2 float-right" id="submit-insurance">Submit request</button>
+                </div>
+            </div>
+        </div>
+        <div id="oracles" class="box d-none">
+            <div class="row top-20">
+                <div class="col-md-12">
+                    <h3>Flight radar</h3>
+                    <hr>
+                    <label class="form">Flight number</label>
+                    <input type="text" id="flight-number" class="form-control">
+                    <button class="btn btn-primary mt-2 float-right" id="submit-oracle">Submit to Oracles</button>
+                </div>
+            </div>
+        </div>
+        <div id="display-wrapper" class="top-20">
         </div>
     </main>
     <script src="./bundle.js"></script>
+    <footer>
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-md-12">
+                    <div id="heartbeat" class="status-indicator">
+                        <span id="status-light" title="Contract status" class="bg-dark rounded-circle float-left">
+                            <i class="fa fa-refresh fa-spin"></i>
+                        </span>
+                        <span id="status-label" class="float-left ml-2"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
 </body>
 
 </html>
