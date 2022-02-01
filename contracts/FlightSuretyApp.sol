@@ -484,6 +484,10 @@ contract FlightSuretyApp {
         }
     }
 
+    function getFlightStatus(bytes32 flightCode) external view returns (uint8){
+        return fsdContract.getFlightStatus(flightCode);
+    }
+
     function claimOrCredit(bytes32 flightCode)
         external
         requireIsOperational
@@ -563,7 +567,7 @@ contract FlightSuretyData {
         uint8 statusCode
     ) external;
 
-    function getFlightStatus(bytes32 flightCode) external returns (uint8);
+    function getFlightStatus(bytes32 flightCode) external view returns (uint8);
 
     /* -------------------------- Insurance management -------------------------- */
     function getMaxInsurancePremium() public view returns (uint256);

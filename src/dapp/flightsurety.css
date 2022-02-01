@@ -26,6 +26,7 @@ body.bgr-oracles {
 }
 
 footer {
+    font-size: 0.85rem;
     bottom: 0;
     width: 100%;
     position: fixed;
@@ -35,8 +36,8 @@ footer {
 }
 
 .box {
-    margin-top: 30vh;
-    width: 30rem;
+    margin-top: 25vh;
+    width: 40rem;
     max-width: 90vw;
     margin-right: 5vw;
     margin-left: auto;
@@ -45,6 +46,8 @@ footer {
     padding: 40px;
     background-color: rgba(255, 255, 255, 0.55);
     backdrop-filter: blur(10px);
+    z-index: 10;
+    position: relative;
 }
 
 .top-20 {
@@ -88,7 +91,6 @@ input {
     line-height: 1rem;
 }
 .status-indicator #status-label {
-    font-size: 0.85rem;
     line-height: 1.2;
 }
 
@@ -99,4 +101,14 @@ input {
 .navbar-dark .navbar-nav .nav-link:focus,
 .navbar-dark .navbar-nav .nav-link:hover {
     color: rgba(255, 255, 255, 0.95);
+}
+
+table {
+    font-size: 0.7rem;
+}
+
+.btn-xs {
+    padding: 0.25rem 0.25rem;
+    font-size: .8rem;
+    line-height: 1;
 }

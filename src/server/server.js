@@ -1,4 +1,4 @@
-import FlightSuretyApp from '/build/contracts/FlightSuretyApp.json';
+import FlightSuretyApp from '../../build/contracts/FlightSuretyApp.json';
 import Config from './config.json';
 import Web3 from 'web3';
 let config = Config['localhost'];
@@ -8,11 +8,16 @@ let flightSuretyApp = new web3.eth.Contract(FlightSuretyApp.abi, config.appAddre
 
 
 flightSuretyApp.events.OracleRequest({
-  fromBlock: 0
-}, function (error, event) {
-  if (error) console.log(error)
+  fromBlock: 'latest'
+}, function (error, result) {
+  if (!error) {
+    console.log(result)
+  }
+}).on("connected", function (subscriptionId) {
+  console.log(subscriptionId)
+}).on('data', function (event) {
   console.log(event)
-});
+})
 
 const express = require('express')
 const app = express()

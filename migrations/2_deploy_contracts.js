@@ -11,7 +11,9 @@ module.exports = function (deployer, network, accounts) {
         .then(() => {
             deployer.link(FlightSuretyData, FlightSuretyApp);
             return deployer.deploy(FlightSuretyApp, FlightSuretyData.address)
-                .then(() => {
+                .then(async () => {
+                    flightSuretyData = await FlightSuretyData.deployed();
+                    await flightSuretyData.authorizeCaller(FlightSuretyApp.address, { from: accounts[0] })
                     let config = {
                         localhost: {
                             url: 'http://localhost:7545',

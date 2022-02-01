@@ -434,7 +434,7 @@ contract FlightSuretyData {
         requireIsCallerAuthorized
         requireValidAddress(airline)
     {
-        airlineFundDeposits[airline] = amount;
+        airlineFundDeposits[airline] = airlineFundDeposits[airline].add(amount);
         emit FundsDeposited(airline, amount);
     }
 
