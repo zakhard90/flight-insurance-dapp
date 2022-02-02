@@ -4,7 +4,8 @@ const fs = require('fs');
 
 module.exports = function (deployer, network, accounts) {
 
-    let firstAirlineAddress = accounts[1];
+    const [owner, ...otherAccounts] = accounts
+    let firstAirlineAddress = otherAccounts[0];
     let firstAirlineName = "Genesis Airlines";
     let firstAirlineCode = "GA01";
     deployer.deploy(FlightSuretyData, firstAirlineAddress, firstAirlineName, firstAirlineCode)
@@ -13,12 +14,13 @@ module.exports = function (deployer, network, accounts) {
             return deployer.deploy(FlightSuretyApp, FlightSuretyData.address)
                 .then(async () => {
                     flightSuretyData = await FlightSuretyData.deployed();
-                    await flightSuretyData.authorizeCaller(FlightSuretyApp.address, { from: accounts[0] })
+                    await flightSuretyData.authorizeCaller(FlightSuretyApp.address, { from: owner})
                     let config = {
                         localhost: {
                             url: 'http://localhost:7545',
                             dataAddress: FlightSuretyData.address,
-                            appAddress: FlightSuretyApp.address
+                            appAddress: FlightSuretyApp.address,
+                            otherAccounts: otherAccounts
                         }
                     }
                     fs.writeFileSync(__dirname + '/../src/dapp/config.json', JSON.stringify(config, null, '\t'), 'utf-8');

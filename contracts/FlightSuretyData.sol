@@ -96,12 +96,6 @@ contract FlightSuretyData {
     event FundsDeposited(address airline, uint256 amount);
     event FundsWithdrawn(address airline, uint256 amount);
 
-    event InsureePayoutPrepared(
-        address airline,
-        bytes32 flightCode,
-        address account
-    );
-
     event InsurancePurchased(
         address airline,
         bytes32 flightCode,
@@ -206,9 +200,9 @@ contract FlightSuretyData {
         );
         _;
     }
-    modifier requireIsFirstVote(address airlineAddress) {
+    modifier requireIsFirstVote(address airlineAddress, address voterAddress) {
         require(
-            airlineVoters[airlineAddress][tx.origin] == false,
+            airlineVoters[airlineAddress][voterAddress] == false,
             "Caller has already voted for this airline"
         );
         _;
@@ -308,13 +302,14 @@ contract FlightSuretyData {
     function registerAirline(
         address airlineAddress,
         string calldata name,
-        string calldata code
+        string calldata code,
+        address proponentAddress
     )
         external
         requireIsOperational
         requireIsCallerAuthorized
-        requireOperationalAirline(tx.origin)
-        requireMinimumFundsCovered(tx.origin)
+        requireOperationalAirline(proponentAddress)
+        requireMinimumFundsCovered(proponentAddress)
     {
         require(bytes(airlines[airlineAddress].name).length == 0);
 
@@ -324,16 +319,16 @@ contract FlightSuretyData {
         emit AirlineRegistered(airlineAddress, name, code);
     }
 
-    function voteAirline(address airlineAddress)
+    function voteAirline(address airlineAddress, address voterAddress)
         external
         requireIsOperational
         requireIsCallerAuthorized
         requireProxySender
-        requireIsFirstVote(airlineAddress)
-        requireOperationalAirline(tx.origin)
-        requireMinimumFundsCovered(tx.origin)
+        requireIsFirstVote(airlineAddress,voterAddress)
+        requireOperationalAirline(voterAddress)
+        requireMinimumFundsCovered(voterAddress)
     {
-        airlineVoters[airlineAddress][tx.origin] = true;
+        airlineVoters[airlineAddress][voterAddress] = true;
         airlineVotes[airlineAddress] = airlineVotes[airlineAddress].add(1);
         emit AirlineVoted(airlineAddress, airlineVotes[airlineAddress]);
     }
@@ -344,28 +339,6 @@ contract FlightSuretyData {
         returns (uint256)
     {
         return airlineVotes[airlineAddress];
-    }
-
-    function blockAirline(address airlineAddress)
-        external
-        requireIsOperational
-        requireIsCallerAuthorized
-        requireProxySender
-        requireValidAddress(airlineAddress)
-        requireOperationalAirline(tx.origin)
-        requireMinimumFundsCovered(tx.origin)
-    {
-        require(bytes(airlines[airlineAddress].name).length > 0);
-        require(countOperationalAirlines > 0);
-
-        airlines[airlineAddress].isOperational = false;
-        countOperationalAirlines = countOperationalAirlines.sub(1);
-        countBlockedAirlines = countBlockedAirlines.add(1);
-        emit AirlineBlocked(
-            airlineAddress,
-            airlines[airlineAddress].name,
-            airlines[airlineAddress].code
-        );
     }
 
     function isOperationalAirline(address airlineAddress)
