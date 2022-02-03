@@ -7,6 +7,7 @@ import Web3 from 'web3';
 
 (async () => {
     let result = null;
+    let amount = 0;
     let contract = null;
     let inputs = document.getElementsByTagName('input')
 
@@ -45,10 +46,10 @@ import Web3 from 'web3';
                             depositValue.innerText = amount
                         })
                         contract.getAirlineData(contract.user, (error, result) => {
-                            let airlineName = document.getElementById("airline-name")
+                            let airlineName = document.getElementById("current-airline-name")
                             airlineName.innerText = result.name
 
-                            let airlineCode = document.getElementById("airline-code")
+                            let airlineCode = document.getElementById("current-airline-code")
                             airlineCode.innerText = result.code
                         })
                     } else {
@@ -56,10 +57,11 @@ import Web3 from 'web3';
                         box.innerHTML = "<h2>Access not allowed</h2><h6>Available only for registered airlines</h6>"
                     }
                     contract.getCustomerPayoutBalance(contract.user, (error, amount) => {
-                        amount = Web3.utils.fromWei(amount.toString(), "ether")
-                        let balanceValue = document.getElementById("payout-balance")
-                        balanceValue.innerText = amount
+
                         if (amount > 0) {
+                            amount = Web3.utils.fromWei(amount.toString(), "ether")
+                            let balanceValue = document.getElementById("payout-balance")
+                            balanceValue.innerText = amount
                             let withdrawPayouts = document.getElementById("withdraw-payouts")
                             withdrawPayouts.classList.remove("d-none")
                         }
@@ -106,8 +108,30 @@ import Web3 from 'web3';
 
                 contract.getAllEvents(["InsurancePurchased", "InsurancePayoutCredited"], [contract.user], (events) => {
                     UI.displayPremiumList(events, Store.fetchAllFlights(), () => {
+                        if (events.length > 0) {
+                            let transactions = document.querySelectorAll('.js-transactions')
+                            transactions[0].classList.remove('d-none')
+                        }
+                    })
+                })
+
+                contract.getAllEvents([], [], (events) => {
+                    UI.displayEventList(events, () => {
 
                     })
+                })
+
+                let showEvents = document.getElementById('show-events')
+                UI.bindEvent(showEvents, "click", (event) => {
+                    event.preventDefault()
+                    let eventWrapper = document.getElementById('events-wrapper')
+                    if (eventWrapper.classList.contains('d-none')) {
+                        eventWrapper.classList.remove('d-none')
+                        showEvents.innerText = "Hide event log"
+                    } else {
+                        eventWrapper.classList.add('d-none')
+                        showEvents.innerText = "Show event log"
+                    }
                 })
 
                 let cacheClear = document.getElementById('cache-clear')
@@ -146,13 +170,17 @@ import Web3 from 'web3';
     UI.bindEvent(buttonFunds, "click", () => {
         contract.fundDeposit((error, result) => {
             console.log("depositFunds " + result);
-            contract.registerFlights((flightRecord, isLast, error, result) => {
-                Store.persistFlight(flightRecord.code, flightRecord)
-                if (isLast) {
-                    location.reload();
-                }
-            });
         })
+    })
+
+    let buttonFlights = document.getElementById('register-flights')
+    UI.bindEvent(buttonFlights, "click", () => {
+        contract.registerFlights((flightRecord, isLast, error, result) => {
+            Store.persistFlight(flightRecord.code, flightRecord)
+            if (isLast) {
+                location.reload();
+            }
+        });
     })
 
     let buttonOracles = document.getElementById('submit-oracle')

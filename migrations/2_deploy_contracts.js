@@ -17,7 +17,7 @@ module.exports = function (deployer, network, accounts) {
                     await flightSuretyData.authorizeCaller(FlightSuretyApp.address, { from: owner})
                     let config = {
                         localhost: {
-                            url: 'http://localhost:7545',
+                            url: 'http://localhost:8545',
                             dataAddress: FlightSuretyData.address,
                             appAddress: FlightSuretyApp.address,
                             otherAccounts: otherAccounts

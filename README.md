@@ -2,6 +2,21 @@
 
 ## Installation
 
+1. For this setup I've used **Ganache-cli** with 30 accounts, 1000 ETH and a fixed mnemonic and chain ID: \
+`ganache-cli -a 30 -e 1000 --chainId 5777 -m "hockey ..."`
+
+2. Run `npm install` for the package installations
+
+3. The Truffle tests can be executed with `npm run test`
+
+4. Contracts can be migrated with `npm run migrate`
+
+5. The Front-end application can be launched with `npm run dapp`
+
+6. The Back-end application can be launched with `npm run server`
+
+7. In order to register some airlines and oracles use `npm run setup`
+
 ## Dependencies
 
 ## Contract interactions and Business logic

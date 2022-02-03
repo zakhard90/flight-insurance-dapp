@@ -109,6 +109,21 @@ table {
 
 .btn-xs {
     padding: 0.25rem 0.25rem;
-    font-size: .8rem;
+    font-size: 0.8rem;
     line-height: 1;
+}
+
+.event-box {
+    background-color: rgba(255, 255, 255, 0.55);
+    backdrop-filter: blur(10px);
+    max-width: 100%;
+    max-height: 80%;
+    margin: 2%;
+    overflow-y: auto;
+    overflow-x: auto;
+    top: 10vh;
+    height: auto;
+    width: 96%;
+    z-index: 100;
+    position: absolute;
 }

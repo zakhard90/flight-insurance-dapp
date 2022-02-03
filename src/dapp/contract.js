@@ -177,7 +177,6 @@ export default class Contract {
             });
         allEvents = [...eventsData, ...eventsApp]
         let logs = []
-        console.log(allEvents);
         for (let i = 0; i < allEvents.length; i++) {
             let event = allEvents[i]
             let contents = event.returnValues

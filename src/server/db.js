@@ -1,40 +1,53 @@
-const fs = require('fs');
+const fs = require('fs')
+const PATH = './build/server/db.json'
 const DB = {
-    _file: "db.json",
     persistOracle: (obj) => {
-        let key = obj.oracle
-        let db = fs.readFileSync(_file);
-        if (db === undefined || db === "") {
-            db = {}
+        let key = obj.address
+        let db = {}
+        try {
+            if (fs.existsSync(PATH)) {
+                db = fs.readFileSync(PATH);
+                db = JSON.parse(db)
+            }
+        } catch (e) {
+            console.log(e)
         }
-
         db[key] = JSON.stringify(obj)
 
-        fs.writeFile(_file, db, 'utf8', function (err) {
+        fs.writeFileSync(PATH, JSON.stringify(db, null, '\t'), 'utf-8', function (err) {
             if (err) {
                 console.log("An error occured while writing JSON Object to File.");
                 return console.log(err);
             }
             console.log("JSON file has been saved.");
         });
+
         return true
     },
 
     fetchOracle: (key) => {
         let output = null
-        let db = fs.readFileSync(_file);
+        let db = {}
+        if (fs.existsSync(PATH)) {
+            db = fs.readFileSync(PATH);
+            db = JSON.parse(db)
+        }
         if (db !== undefined) {
-            output = db[key]
+            output = JSON.parse(db[key])
         }
         return output
     },
 
     fetchAllOracles: () => {
         let output = []
-        let db = fs.readFileSync(_file);
+        let db = {}
+        if (fs.existsSync(PATH)) {
+            db = fs.readFileSync(PATH);
+            db = JSON.parse(db)
+        }
         if (db !== undefined) {
             for (let key in db) {
-                output.push(db[key])
+                output.push(JSON.parse(db[key]))
             }
         }
         return output

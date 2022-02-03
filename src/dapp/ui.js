@@ -222,6 +222,41 @@ const UI = {
         UI._filSingleValue(fieldFlight, flight)
         UI.showSection("insurance")
     },
+    displayEventList: (events, callback) => {
+        if (Object.keys(events).length > 0) {
+            let displayTable = document.getElementById("events-table")
+            let rowsFrom = (events) => {
+                let rows = "";
+                for (let k in events) {
+                    let event = events[k]
+                    let contents = {...event}
+                    delete contents["name"];    
+
+                    rows += `
+                        <tr>
+                            <td>${event.name}</td>
+                            <td>${JSON.stringify(contents)}</td>
+                        </tr>
+                        `
+                }
+                return rows;
+            }
+            let content = `
+                <thead>
+                    <tr>
+                        <th>Event</th>
+                        <th>Content</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rowsFrom(events)}
+                </tbody>
+                `
+            displayTable.innerHTML = ""
+            displayTable.insertAdjacentHTML("beforeend", content)
+            callback()
+        }
+    },
     clearCache: () => {
         sessionStorage.clear()
         location.reload()
