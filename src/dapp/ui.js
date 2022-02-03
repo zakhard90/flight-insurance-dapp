@@ -71,21 +71,21 @@ const UI = {
         body.classList.add("bgr-" + target)
     },
     heartbeat: (label, status, error) => {
-        setTimeout(() => {
-            let lightTarget = document.getElementById("status-light")
-            let labelTarget = document.getElementById("status-label")
+        let lightTarget = document.getElementById("status-light")
+        let labelTarget = document.getElementById("status-label")
 
-            if (status) {
-                lightTarget.classList.add("bg-success")
-                labelTarget.innerHTML = `<strong>${label}</strong>: contract is up and running`
-            } else {
-                lightTarget.classList.add("bg-danger")
-                labelTarget.innerHTML = `<strong>${label}</strong>: contract is inactive`
-            }
+        if (status) {
+            lightTarget.classList.add("bg-success")
+            labelTarget.innerHTML = `<strong>${label}</strong>: contract is up and running`
+        } else {
+            lightTarget.classList.add("bg-danger")
+            labelTarget.innerHTML = `<strong>${label}</strong>: contract is inactive`
+        }
 
+        if (lightTarget.firstElementChild !== null) {
             lightTarget.firstElementChild.remove();
-            lightTarget.classList.remove("bg-dark")
-        }, 1000)
+        }
+        lightTarget.classList.remove("bg-dark")
     },
     userAddress: (address) => {
         let short = UI._shortenAddress(address)
@@ -229,8 +229,8 @@ const UI = {
                 let rows = "";
                 for (let k in events) {
                     let event = events[k]
-                    let contents = {...event}
-                    delete contents["name"];    
+                    let contents = { ...event }
+                    delete contents["name"];
 
                     rows += `
                         <tr>

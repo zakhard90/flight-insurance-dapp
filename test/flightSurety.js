@@ -278,7 +278,7 @@ contract('Flight Surety Tests', async (accounts) => {
         let flightCode = web3.utils.soliditySha3(airline.address, flight.description, flight.timestamp)
 
         // setting the flight status to "CODE_LATE_AIRLINE"
-        await config.flightSuretyApp.updateFlight(flightCode, (flight.timestamp + 3600), 20, { from: airline.address })
+        await config.flightSuretyApp.updateFlight(flightCode, 20, { from: airline.address })
 
         let customer1 = config.customers[0]
         let customer2 = config.customers[1]
@@ -347,7 +347,7 @@ contract('Flight Surety Tests', async (accounts) => {
         assert.equal(BigNumber(premium).toNumber(), amount, "The insurance purchase value doesn't match the expected value before claiming")
 
         // setting the flight status to "CODE_LATE_WEATHER"
-        await config.flightSuretyApp.updateFlight(flightCode, flight.timestamp, 30, { from: airline.address })
+        await config.flightSuretyApp.updateFlight(flightCode, 30, { from: airline.address })
 
         // claim the insurance premiums or credit the customers based on the flight status code
         await config.flightSuretyApp.claimOrCredit(flightCode, { from: airline.address })

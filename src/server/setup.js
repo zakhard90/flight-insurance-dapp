@@ -17,6 +17,9 @@ module.exports = async function (callback) {
     try {
         const accounts = await web3.eth.getAccounts()
         const [owner, ...otherAccounts] = accounts
+
+        console.log(otherAccounts)
+
         const flightSuretyApp = await FlightSuretyApp.deployed()
 
         let fundAmount = web3.utils.toWei('10', 'ether')
@@ -48,12 +51,12 @@ module.exports = async function (callback) {
         /* --------------------------- Oracle registration -------------------------- */
 
         let init = 9
-        let numOracles = 20
+        let numOracles = 19
         for (let i = init; i <= init + numOracles; i++) {
             let fee = await flightSuretyApp.REGISTRATION_FEE.call();
             let amount = BigNumber(fee).toNumber()
             try {
-                await flightSuretyApp.registerOracle({ from: otherAccounts[i], value: BigNumber(fee).toNumber() });
+                await flightSuretyApp.registerOracle({ from: otherAccounts[i], value: amount });
             } catch (e) {
                 console.log("Oracle not registered " + e)
             }

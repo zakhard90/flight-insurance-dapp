@@ -1,10 +1,9 @@
 import FlightSuretyApp from '../../build/contracts/FlightSuretyApp.json'
 import Config from './config.json'
 import DB from './db.js'
-import BigNumber from 'bignumber.js'
 import Web3 from 'web3'
 const config = Config['localhost']
-
+let flip
 
 let wsProvider = new Web3.providers.WebsocketProvider(config.url.replace('http', 'ws'))
 let web3 = new Web3(wsProvider)
@@ -57,32 +56,41 @@ const consultOracles = async (index, airline, flightCode, timestamp) => {
   let oracles = DB.fetchAllOracles().filter((oracle) => {
     return (oracle.indexes.includes(index))
   })
-  console.log("*************************")
+  let process = true
   for (let oracle of oracles) {
-    let status = evaluateStatus(flightCode)
-    console.log(index)
-    console.log(status)
-    let delay = status === CODE_LATE_AIRLINE ? 3000 : 0
-    flightSuretyApp.methods.submitOracleResponse(
-      index,
-      airline,
-      flightCode,
-      timestamp,
-      status,
-      delay
-    ).send({ from: oracle.address }).then((res, err) => {
-      if (err) console.log(err)
-    })
-    console.log("----")
+    if (process) {
+      try {
+        let status = evaluateStatus(flightCode)
+        let oracleIndexes = await flightSuretyApp.methods.getMyIndexes().call({ from: oracle.address })
+        if (oracleIndexes.includes(index + "")) {
+          console.log(index, status, oracleIndexes)
+          flightSuretyApp.methods.submitOracleResponse(
+            index,
+            airline,
+            flightCode,
+            timestamp,
+            status
+          ).send({ from: oracle.address }).then((res) => {
+            // if (err) console.log(err)
+            console.log(res)
+          }).catch((error) => {
+            process = false
+            console.log(error)
+          })
+        }
+      } catch (error) {
+        console.log(error)
+      }
+    }
   }
-  console.log("*************************")
 }
 
+
 const evaluateStatus = (flightCode) => {
-  let seed = new Date().timestamp + flightCode
-  let flip = (Math.floor(Math.random(seed) * 2))
-  let rand = (Math.floor(Math.random() * 9))
-  let status = flip * rand < 1 ? CODE_ON_TIME : CODE_LATE_AIRLINE
+  if (!flip) {
+    flip = (Math.floor(Math.random(flightCode) * 4))
+  }
+  let status = flip < 1 ? CODE_ON_TIME : CODE_LATE_AIRLINE
   return status
 }
 

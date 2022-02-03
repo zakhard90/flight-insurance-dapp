@@ -43,7 +43,7 @@ export default class Contract {
             timestamp: Math.floor(Date.now() / 1000)
         }
         self.flightSuretyApp.methods
-            .fetchFlightStatus(flight.airline, flight.code, payload.timestamp)
+            .fetchFlightStatus(payload.airline, payload.flight, payload.timestamp)
             .send({ from: self.user }, (error, result) => {
                 callback(error, payload)
             })
@@ -98,6 +98,8 @@ export default class Contract {
     }
 
     registerFlights(callback) {
+        sessionStorage.clear()
+
         let self = this
         let flights = [
             {
@@ -161,6 +163,13 @@ export default class Contract {
             })
     }
 
+    async getTimeByBlock(txHash) {
+        const blockN = await this.web3.eth.getTransaction(txHash)
+        const blockData = await this.web3.eth.getBlock(blockN.blockNumber)
+
+        return blockData.timestamp
+    }
+
     async getAllEvents(filterType, filterAccount, callback) {
         let self = this
 
@@ -177,6 +186,16 @@ export default class Contract {
             });
         allEvents = [...eventsData, ...eventsApp]
         let logs = []
+
+        for (let i = 0; i < allEvents.length; i++) {
+            let event = allEvents[i]
+            event.time = await this.getTimeByBlock(event.transactionHash);
+        }
+
+        allEvents.sort((e1, e2) => {
+            return e2.time - e1.time
+        })
+
         for (let i = 0; i < allEvents.length; i++) {
             let event = allEvents[i]
             let contents = event.returnValues
@@ -199,10 +218,10 @@ export default class Contract {
 
     }
 
-    delayFlight(flightCode, flightTimestamp, callback) {
+    delayFlight(flightCode, callback) {
         let self = this
         self.flightSuretyApp.methods
-            .updateFlight(flightCode, (flightTimestamp + 3600), 20)
+            .updateFlight(flightCode, 20)
             .send({ from: self.user }, (error, result) => {
                 callback(error, result)
             })

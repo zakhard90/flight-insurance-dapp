@@ -69,7 +69,6 @@ contract FlightSuretyData {
         bool isRegistered;
         uint8 statusCode;
         uint256 timestamp;
-        uint256 updatedTimestamp;
     }
 
     /* -------------------------------------------------------------------------- */
@@ -87,8 +86,6 @@ contract FlightSuretyData {
     event FlightBlocked(address airline, bytes32 code);
     event FlightUpdated(
         bytes32 code,
-        uint256 oldTime,
-        uint256 newTime,
         uint8 oldStatus,
         uint8 newStatus
     );
@@ -426,13 +423,12 @@ contract FlightSuretyData {
         requireIsCallerAuthorized
     {
         require(flights[flightCode].airline == address(0));
-        flights[flightCode] = Flight(airline, true, 0, timestamp, 0);
+        flights[flightCode] = Flight(airline, true, 0, timestamp);
         emit FlightRegistered(airline, flightCode, timestamp);
     }
 
     function updateFlight(
         bytes32 flightCode,
-        uint256 timestamp,
         uint8 status
     )
         external
@@ -441,15 +437,11 @@ contract FlightSuretyData {
         requireIsCallerAuthorized
     {
         require(flights[flightCode].airline != address(0));
-        uint256 oldTimestamp = flights[flightCode].timestamp;
         uint8 oldStatus = flights[flightCode].statusCode;
         flights[flightCode].statusCode = status;
-        flights[flightCode].updatedTimestamp = timestamp;
 
         emit FlightUpdated(
             flightCode,
-            oldTimestamp,
-            timestamp,
             oldStatus,
             status
         );

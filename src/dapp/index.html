@@ -22,13 +22,16 @@
         <div class="collapse navbar-collapse" id="navbarSupportedContent">
             <ul class="navbar-nav ml-auto float-right">
                 <li class="nav-item">
+                    <a class="nav-link js-metamask d-none active" href="#" data-link="landing">Home</a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link js-metamask d-none" href="#" data-link="airlines">Register Airline</a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link js-metamask d-none" href="#" data-link="insurance">Buy Insurance</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link js-metamask d-none" href="#" data-link="oracles">Flight radar</a>
+                    <a class="nav-link js-metamask d-none" href="#" data-link="oracles">Flight Radar</a>
                 </li>
             </ul>
             <div id="user-address" class="user-address js-metamask d-none text-white ml-4"></div>
@@ -44,7 +47,7 @@
             <div class="row top-20 text-center">
                 <div class="col-md-12">
                     <h2>Welcome to FlightSurety</h2>
-                    <h5>Some are lucky, but you are probably not</h5>
+                    <h5>Feeling lucky today? Think twice!</h5>
                     <button class="btn btn-primary mt-4 btn-block" id="connect-wallet">Connect to Metamask</button>
                     <div class="js-metamask d-none text-left mt-4">
                         <table id="flight-table" class="table table-striped"></table>
@@ -128,7 +131,7 @@
         <div id="oracles" class="box d-none">
             <div class="row top-20">
                 <div class="col-md-12">
-                    <h3>Flight radar</h3>
+                    <h3>Flight Radar</h3>
                     <hr>
                     <label class="form">Flight number</label>
                     <input type="text" id="flight-number" class="form-control">

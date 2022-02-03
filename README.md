@@ -19,7 +19,32 @@
 
 ## Dependencies
 
+Truffle v5.4.29 (core: 5.4.29)
+Solidity - 0.5.16 (solc-js)
+Node v14.16.0
+Web3.js v1.5.3
+
 ## Contract interactions and Business logic
+
+1. The oracles are first registered onchain and then persisted in a json file. 
+So after the `setup` script, trigger this endpoint:
+`http://localhost:3000/api?register=1`
+
+2. The first airline is registered on deploy. In the dApp client you can deposit 
+funds with an airline account and register the demo flights in the "Register Airline" section
+
+3. Only registered airlines can access the "Register Airline" section
+
+4. The customers can fill the insurance purchasing form by clicking the cart icon 
+in the flight table in the landing page
+
+5. The "Flight Radar" section enables the oracle data fetching or forcing a delay
+
+6. At the end of the process, the airline can close the flight in the landing page.
+Based on the flight status the insurance funds are credited to the insurees or 
+claimed by the airline
+
+7. All the events can be inspected with "Show event log" button
 
 ### Voting process and Airline registration
 

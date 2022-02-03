@@ -228,12 +228,11 @@ contract FlightSuretyApp {
         fsdContract.registerFlight(msg.sender, flightCode, timestamp);
     }
 
-    function updateFlight(
-        bytes32 flightCode,
-        uint256 newTimestamp,
-        uint8 status
-    ) public requireIsOperational {
-        fsdContract.updateFlight(flightCode, newTimestamp, status);
+    function updateFlight(bytes32 flightCode, uint8 status)
+        external
+        requireIsOperational
+    {
+        fsdContract.updateFlight(flightCode, status);
     }
 
     // Generate a request for oracles to fetch flight information
@@ -302,7 +301,8 @@ contract FlightSuretyApp {
         address airline,
         bytes32 flightCode,
         uint256 timestamp,
-        uint8 status
+        uint8 status,
+        uint256 length
     );
 
     event OracleRegistered(
@@ -322,9 +322,8 @@ contract FlightSuretyApp {
         uint256 timestamp
     );
 
-    // Register an oracle with the contract
+    /* ------------------ Register an oracle with the contract ------------------ */
     function registerOracle() external payable {
-        // Require registration fee
         require(msg.value >= REGISTRATION_FEE, "Registration fee is required");
         require(oracles[msg.sender].isRegistered == false);
         uint8[3] memory indexes = generateIndexes(msg.sender);
@@ -352,8 +351,7 @@ contract FlightSuretyApp {
         address airline,
         bytes32 flightCode,
         uint256 timestamp,
-        uint8 statusCode,
-        uint256 delay
+        uint8 statusCode
     ) external {
         require(
             (oracles[msg.sender].indexes[0] == index) ||
@@ -374,17 +372,19 @@ contract FlightSuretyApp {
 
         // Information isn't considered verified until at least MIN_RESPONSES
         // oracles respond with the *** same *** information
-        emit OracleReport(airline, flightCode, timestamp, statusCode);
+        emit OracleReport(
+            airline,
+            flightCode,
+            timestamp,
+            statusCode,
+            oracleResponses[key].responses[statusCode].length
+        );
         if (
             oracleResponses[key].responses[statusCode].length >= MIN_RESPONSES
         ) {
+            fsdContract.updateFlight(flightCode, statusCode);
+            oracleResponses[key].isOpen = false;
             emit FlightStatusInfo(airline, flightCode, timestamp, statusCode);
-            (, , uint256 originalTimestamp, , ) = fsdContract.getFlightData(
-                flightCode
-            );
-            uint256 newTimestamp = originalTimestamp.add(delay);
-            // Handle flight status as appropriate
-            updateFlight(flightCode, newTimestamp, statusCode);
         }
     }
 
@@ -597,11 +597,7 @@ contract FlightSuretyData {
         uint256 timestamp
     ) external;
 
-    function updateFlight(
-        bytes32 flightCode,
-        uint256 newTimestamp,
-        uint8 statusCode
-    ) external;
+    function updateFlight(bytes32 flightCode, uint8 statusCode) external;
 
     function getFlightStatus(bytes32 flightCode) external view returns (uint8);
 

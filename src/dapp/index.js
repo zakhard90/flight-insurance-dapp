@@ -5,7 +5,9 @@ import Store from './store';
 import './flightsurety.css';
 import Web3 from 'web3';
 
+
 (async () => {
+    const REFRESH_TIME = 3000
     let result = null;
     let amount = 0;
     let contract = null;
@@ -38,6 +40,19 @@ import Web3 from 'web3';
                 contract.isOperational((error, status) => {
                     UI.heartbeat('Operational Status', status, error)
                 });
+
+                const displayHeartbeat = () => {
+                    console.log("displayHeartbeat")
+                    setTimeout(function () {
+                        contract.isOperational((error, status) => {
+                            UI.heartbeat('Operational Status', status, error)
+                        });
+                    }, REFRESH_TIME);
+                }
+
+                displayHeartbeat()
+
+
                 contract.isOperationalAirline(async (error, result) => {
                     if (result) {
                         contract.getAirlineFundDeposit(contract.user, (error, amount) => {
@@ -115,11 +130,19 @@ import Web3 from 'web3';
                     })
                 })
 
-                contract.getAllEvents([], [], (events) => {
-                    UI.displayEventList(events, () => {
+                const displayEvents = () => {
+                    setTimeout(function () {
+                        console.log("displayEvents")
+                        contract.getAllEvents([], [], (events) => {
+                            UI.displayEventList(events, () => {
+                                displayEvents();
+                            })
+                        })
+                    }, REFRESH_TIME);
+                }
 
-                    })
-                })
+                displayEvents();
+
 
                 let showEvents = document.getElementById('show-events')
                 UI.bindEvent(showEvents, "click", (event) => {
@@ -187,6 +210,7 @@ import Web3 from 'web3';
     UI.bindEvent(buttonOracles, "click", () => {
         let flightCode = document.getElementById('flight-number').value
         let flight = Store.fetchFlight(flightCode)
+
         contract.fetchFlightStatus(flight, (error, result) => {
             UI.display('Oracles', 'Trigger oracles', [{ label: 'Fetch Flight Status', error: error, value: result.flight + ' ' + result.timestamp }])
         })
@@ -195,9 +219,7 @@ import Web3 from 'web3';
     let buttonDelay = document.getElementById('delay-flight')
     UI.bindEvent(buttonDelay, "click", () => {
         let flightCode = document.getElementById('flight-number').value
-        let flight = Store.fetchFlight(flightCode)
-        let timestamp = flight.timestamp
-        contract.delayFlight(flightCode, timestamp, (error, result) => {
+        contract.delayFlight(flightCode, 3000, (error, result) => {
 
         })
     })
