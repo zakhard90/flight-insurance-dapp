@@ -259,13 +259,10 @@ contract FlightSuretyApp {
     /*                              Oracle management                             */
     /* -------------------------------------------------------------------------- */
 
-    // Incremented to add pseudo-randomness at various points
     uint8 private nonce = 0;
 
-    // Fee to be paid when registering oracle
     uint256 public constant REGISTRATION_FEE = 1 ether;
 
-    // Number of oracles that must respond for valid status
     uint256 private constant MIN_RESPONSES = 3;
 
     struct Oracle {
@@ -273,23 +270,16 @@ contract FlightSuretyApp {
         uint8[3] indexes;
     }
 
-    // Track all registered oracles
     mapping(address => Oracle) private oracles;
 
-    // Model for responses from oracles
     struct ResponseInfo {
-        address requester; // Account that requested status
-        bool isOpen; // If open, oracle responses are accepted
-        mapping(uint8 => address[]) responses; // Mapping key is the status code reported
-        // This lets us group responses and identify
-        // the response that majority of the oracles
+        address requester;
+        bool isOpen; 
+        mapping(uint8 => address[]) responses;
     }
 
-    // Track all oracle responses
-    // Key = hash(index, flight, timestamp)
     mapping(bytes32 => ResponseInfo) private oracleResponses;
 
-    // Event fired each time an oracle submits a response
     event FlightStatusInfo(
         address airline,
         bytes32 flightCode,
@@ -312,9 +302,6 @@ contract FlightSuretyApp {
         uint8 index3
     );
 
-    // Event fired when flight status request is submitted
-    // Oracles track this and if they have a matching index
-    // they fetch data and submit a response
     event OracleRequest(
         uint8 index,
         address airline,
@@ -342,10 +329,6 @@ contract FlightSuretyApp {
         return oracles[msg.sender].indexes;
     }
 
-    // Called by oracle when a response is available to an outstanding request
-    // For the response to be accepted, there must be a pending request that is open
-    // and matches one of the three Indexes randomly assigned to the oracle at the
-    // time of registration (i.e. uninvited oracles are not welcome)
     function submitOracleResponse(
         uint8 index,
         address airline,
@@ -370,8 +353,6 @@ contract FlightSuretyApp {
 
         oracleResponses[key].responses[statusCode].push(msg.sender);
 
-        // Information isn't considered verified until at least MIN_RESPONSES
-        // oracles respond with the *** same *** information
         emit OracleReport(
             airline,
             flightCode,
@@ -396,7 +377,6 @@ contract FlightSuretyApp {
         return keccak256(abi.encodePacked(airline, flight, timestamp));
     }
 
-    // Returns array of three non-duplicating integers from 0-9
     function generateIndexes(address account)
         internal
         returns (uint8[3] memory)
@@ -417,11 +397,9 @@ contract FlightSuretyApp {
         return indexes;
     }
 
-    // Returns array of three non-duplicating integers from 0-9
     function getRandomIndex(address account) internal returns (uint8) {
         uint8 maxValue = 10;
 
-        // Pseudo random number...the incrementing nonce adds variation
         uint8 random = uint8(
             uint256(
                 keccak256(
@@ -431,7 +409,7 @@ contract FlightSuretyApp {
         );
 
         if (nonce > 250) {
-            nonce = 0; // Can only fetch blockhashes for last 256 blocks so we adapt
+            nonce = 0;
         }
 
         return random;
