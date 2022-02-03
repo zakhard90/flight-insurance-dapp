@@ -30,6 +30,8 @@ Web3.js v1.5.3
 the server-side actions. So after the `setup` script, trigger this endpoint:
 `http://localhost:3000/api?register=1`
 
+![](https://github.com/zakhard90/udproj-4/blob/master/_screenshots/Oracles%20registered.PNG)
+
 2. The first airline is registered on deploy. In the dApp client you can deposit 
 funds with an airline account and register the demo flights in the "Register Airline" section
 
@@ -37,8 +39,12 @@ funds with an airline account and register the demo flights in the "Register Air
 
 3. Only registered airlines can access the "Register Airline" section
 
+![](https://github.com/zakhard90/udproj-4/blob/master/_screenshots/Not%20allowed.PNG)
+
 4. The customers can fill the insurance purchasing form by clicking the cart icon 
 in the flight table in the landing page
+
+![](https://github.com/zakhard90/udproj-4/blob/master/_screenshots/Cart.PNG)
 
 ![](https://github.com/zakhard90/udproj-4/blob/master/_screenshots/Insurance%20payout%20-%201.PNG)
 
